@@ -1,0 +1,9 @@
+{
+    "port": 8080,
+    "cacheCycle": 900,
+    "distDir": "dist",
+    "header": {
+        "Server": "eco-webserver"
+    },
+    "contentType": {}
+}

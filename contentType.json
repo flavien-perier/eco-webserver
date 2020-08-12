@@ -1,0 +1,26 @@
+{
+    "text": "text/plain",
+    "binary": "application/octet-stream",
+
+    "html": "text/html",
+    "css": "text/css",
+
+    "js": "application/javascript",
+    "json": "application/json",
+
+    "ico": "image/x-icon",
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "gif": "image/gif",
+    "bmp": "image/bmp",
+    "webp": "image/webp",
+    "svg": "image/svg+xml",
+    "tif": "image/tiff",
+    "tiff": "image/tiff",
+
+    "otf": "font/otf",
+    "ttf": "font/ttf",
+    "woff": "font/woff",
+    "woff2": "font/woff2"
+}

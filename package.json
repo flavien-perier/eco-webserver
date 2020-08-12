@@ -1,0 +1,23 @@
+{
+  "name": "eco-webserver",
+  "version": "1.0.0",
+  "description": "Static file NodeJs server",
+  "author": "Flavien PERIER <perier@flavien.io>",
+  "license": "MIT",
+  "main": "eco-webserver.js",
+  "scripts": {
+    "start": "node eco-webserver.js"
+  },
+  "dependencies": {
+    "canvas": "2.6.1",
+    "jsdom": "16.4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flavien-perier/eco-webserver.git"
+  },
+  "bugs": {
+    "url": "https://github.com/flavien-perier/eco-webserver/issues"
+  },
+  "homepage": "https://github.com/flavien-perier/eco-webserver#readme"
+}
