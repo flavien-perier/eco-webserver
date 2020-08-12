@@ -4,9 +4,9 @@
   "description": "Static file NodeJs server",
   "author": "Flavien PERIER <perier@flavien.io>",
   "license": "MIT",
-  "main": "eco-webserver.js",
-  "scripts": {
-    "start": "node eco-webserver.js"
+  "main": "cli.js",
+  "bin": {
+    "eco-webserver": "./cli.js"
   },
   "dependencies": {
     "canvas": "2.6.1",
