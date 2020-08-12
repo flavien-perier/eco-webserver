@@ -8,6 +8,10 @@ const { JSDOM } = require("jsdom");
 
 const CONF_DIR = path.join(process.cwd(), "ecoconf.json");
 
+if (!fs.existsSync(fileUrl)) {
+    fs.copyFileSync(path.join(__dirname, "ecoconf.json"), path.join(process.cwd(), "ecoconf.json"))
+}
+
 const configuration = require(CONF_DIR);
 const contentType = {
     ...require("./contentType.json"),
