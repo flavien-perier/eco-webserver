@@ -2,6 +2,7 @@
     "port": 8080,
     "cacheCycle": 900,
     "distDir": "dist",
+    "enableIsomorphic": true,
     "header": {
         "Server": "eco-webserver",
         "Cache-Control": "max-age=86400",
@@ -9,5 +10,7 @@
         "X-Frame-Options": "DENY",
         "Content-Security-Policy": "default-src 'self'"
     },
-    "contentType": {}
+    "contentType": {
+        "mp4": "video/mpeg"
+    }
 }
