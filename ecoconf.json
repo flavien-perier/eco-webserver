@@ -1,6 +1,6 @@
 {
     "port": 8080,
-    "cacheCycle": 900,
+    "cacheCycle": 1800,
     "distDir": "dist",
     "enableIsomorphic": true,
     "header": {
@@ -12,5 +12,8 @@
     },
     "contentType": {
         "mp4": "video/mpeg"
+    },
+    "proxy" : {
+        "/logo.png": "https://avatars3.githubusercontent.com/u/19231288?s=460&u=5c37f3bb39a8ba2a6e925f120e71b748b254e3d9&v=4"
     }
 }

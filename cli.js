@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 
 const http = require("http");
+const https = require("https");
 const fs = require("fs");
+const url = require("url");
 const path = require("path");
 const zlib = require("zlib");
+
 const { JSDOM } = require("jsdom");
 
 const CONF_DIR = path.join(process.cwd(), "ecoconf.json");
@@ -24,8 +27,10 @@ const BASE_PATH = path.join(process.cwd(), configuration.distDir || "dist");
 const USE_404_FILE = fs.existsSync(path.join(BASE_PATH, "404.html"));
 const USE_500_FILE = fs.existsSync(path.join(BASE_PATH, "500.html"));
 const ENABLE_ISOMORPHIC = configuration.enableIsomorphic ? true : false;
+const PROXY = configuration.proxy || {};
 
-const TXT_CONETENT_TYPE = [contentType.html, contentType.css, contentType.js, contentType.json];
+const TXT_CONETENT_TYPE = [contentType.css, contentType.js, contentType.json];
+const MAX_TTL = 10;
 
 const cache = new Map();
 
@@ -33,8 +38,8 @@ setInterval(() => {
     cache.forEach((value, key, cache) => {
         if (value.ttl <= 0) {
             cache.delete(key);
-        } else if (value.ttl > 10) {
-            value.ttl = 10;
+        } else if (value.ttl > MAX_TTL) {
+            value.ttl = MAX_TTL;
         } else {
             value.ttl--;
         }
@@ -42,7 +47,7 @@ setInterval(() => {
 }, CACHE_CYCLE);
 
 class CacheValue {
-    async build(filePath, requestUrl, fileContentType) {
+    async localFile(filePath, requestUrl, fileContentType) {
         if (fileContentType == contentType.html && ENABLE_ISOMORPHIC) {
             this.data = await evaluateHtmlFile(fs.readFileSync(path.join(BASE_PATH, filePath), "utf8"), requestUrl);
             this.dataType = "txt";
@@ -54,7 +59,30 @@ class CacheValue {
             this.dataType = "bin";
         }
 
+        this.ttl = 0;
         this.gzipData = zlib.gzipSync(this.data);
+    }
+
+    proxyFile(requestUrl) {
+        return new Promise((resolve, reject) => {
+            const cdnUrl = PROXY[requestUrl];
+        
+            const options = url.parse(cdnUrl);
+            
+            let buffer = Buffer.alloc(0);
+            (options.protocol == "https:" ? https : http).get(options, res => {
+                res.on("data", data => {
+                    buffer = Buffer.concat([buffer, data]);
+                }).on("end", () => {
+                    this.data = buffer;
+                    this.gzipData = zlib.gzipSync(this.data);
+                    resolve();
+                });
+            });
+
+            this.dataType = "bin";
+            this.ttl = 0;
+        });
     }
 }
 
@@ -122,7 +150,21 @@ async function readFile(filePath, requestUrl, fileContentType, useGzip) {
         cacheValue.ttl++;
     } else {
         cacheValue = new CacheValue();
-        await cacheValue.build(filePath, requestUrl, fileContentType);
+        await cacheValue.localFile(filePath, requestUrl, fileContentType);
+        cache.set(requestUrl, cacheValue);
+    }
+
+    return useGzip ? cacheValue.gzipData : cacheValue.data;
+}
+
+async function readProxy(requestUrl, useGzip) {
+    let cacheValue;
+    if (cache.has(requestUrl)) {
+        cacheValue = cache.get(requestUrl);
+        cacheValue.ttl++;
+    } else {
+        cacheValue = new CacheValue();
+        await cacheValue.proxyFile(requestUrl);
         cache.set(requestUrl, cacheValue);
     }
 
@@ -136,7 +178,11 @@ http.createServer(async (req, res) => {
     const useGzip = (req.headers["accept-encoding"] || "").indexOf("gzip") != -1;
 
     try {
-        if (fs.existsSync(fileUrl) && fs.lstatSync(fileUrl).isFile()) {
+        if (Object.keys(PROXY).indexOf(req.url) != -1) {
+            const contentType = getContentType(req.url);
+            res.writeHead(200, buildHeader(contentType, useGzip));
+            res.write(await readProxy(req.url, useGzip));
+        } else if (fs.existsSync(fileUrl) && fs.lstatSync(fileUrl).isFile()) {
             const contentType = getContentType(req.url);
             res.writeHead(200, buildHeader(contentType, useGzip));
             res.write(await readFile(req.url, req.url, contentType, useGzip));
@@ -148,7 +194,7 @@ http.createServer(async (req, res) => {
             res.write(await readFile("index.html", req.url, contentType.html, useGzip));
         }
     } catch(err) {
-        console.error(`[${new Date().toISOString()}] Internal server error: ${err.text}`)
+        console.error(`[${new Date().toISOString()}] Internal server error: ${err.text}`);
         res.writeHead(500, "Internal server error", buildHeader(contentType.html, useGzip));
         if (USE_500_FILE) {
             res.write(await readFile("500.html", req.url, contentType.html, useGzip));
@@ -157,5 +203,5 @@ http.createServer(async (req, res) => {
 
     res.end();
 }).listen(PORT, null, null, () => {
-    console.log(`[${new Date().toISOString()}] Server start on the port ${PORT}`)
+    console.log(`[${new Date().toISOString()}] Server start on the port ${PORT}`);
 });

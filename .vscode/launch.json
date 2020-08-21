@@ -11,7 +11,7 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}\\eco-webserver.js"
+            "program": "${workspaceFolder}\\cli.js"
         }
     ]
 }
