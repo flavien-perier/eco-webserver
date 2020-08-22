@@ -6,13 +6,14 @@ const fs = require("fs");
 const url = require("url");
 const path = require("path");
 const zlib = require("zlib");
+const crypto = require("crypto");
 
 const { JSDOM } = require("jsdom");
 
-const CONF_DIR = path.join(process.cwd(), "ecoconf.json");
+const CONF_DIR = path.join(process.cwd(), "ecoconf.js");
 
 if (!fs.existsSync(CONF_DIR)) {
-    fs.copyFileSync(path.join(__dirname, "ecoconf.json"), CONF_DIR)
+    fs.copyFileSync(path.join(__dirname, "ecoconf.js"), CONF_DIR);
 }
 
 const configuration = require(CONF_DIR);
@@ -60,7 +61,7 @@ class CacheValue {
         }
 
         this.ttl = 0;
-        this.gzipData = zlib.gzipSync(this.data);
+        this.gzipData = gzipData(this.data);
     }
 
     proxyFile(requestUrl) {
@@ -75,7 +76,7 @@ class CacheValue {
                     buffer = Buffer.concat([buffer, data]);
                 }).on("end", () => {
                     this.data = buffer;
-                    this.gzipData = zlib.gzipSync(this.data);
+                    this.gzipData = gzipData(this.data);
                     resolve();
                 });
             });
@@ -106,11 +107,21 @@ function evaluateHtmlFile(fileContent, requestUrl) {
                 }
             });
     
-        setTimeout(() => {
+        let increment = 0;
+        let lastComputedHtmlMd5 = "";
+
+        const loop = setInterval(() => {
             const computedHtml = dom.window.document.documentElement.outerHTML;
-            dom.window.stop();
-            resolve(computedHtml);
-        }, 1500);
+            const computedHtmlMd5 = crypto.createHash("md5").update(computedHtml).digest("hex");
+
+            if (lastComputedHtmlMd5 === computedHtmlMd5 || increment++ > 20) {
+                dom.window.stop();
+                resolve(computedHtml);
+                clearInterval(loop);
+            } else {
+                lastComputedHtmlMd5 = computedHtmlMd5;
+            }
+        }, 100);
     });
 }
 
@@ -169,6 +180,12 @@ async function readProxy(requestUrl, useGzip) {
     }
 
     return useGzip ? cacheValue.gzipData : cacheValue.data;
+}
+
+function gzipData(data) {
+    return zlib.gzipSync(data, {
+        level: 3
+    });
 }
 
 http.createServer(async (req, res) => {
