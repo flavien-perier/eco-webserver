@@ -7,7 +7,6 @@ const minifyConfiguration = {
 
 module.exports = {
     compareHtml: (actualHtml, expectedHtml) => {
-        console.log(typeof expectedHtml)
         const html1 = minify(actualHtml, minifyConfiguration);
         const html2 = minify(expectedHtml, minifyConfiguration);
 
