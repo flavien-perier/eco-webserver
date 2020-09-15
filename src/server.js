@@ -2,11 +2,12 @@
 
 const http = require("http");
 const https = require("https");
-const fs = require("fs");
-const url = require("url");
-const path = require("path");
-const zlib = require("zlib");
-const crypto = require("crypto");
+
+const { existsSync, readFileSync, lstatSync } = require("fs");
+const { parse } = require("url");
+const { join } = require("path");
+const { gzipSync } = require("zlib");
+const { createHash } = require("crypto");
 const { JSDOM } = require("jsdom");
 
 module.exports = (configuration) => {
@@ -15,10 +16,10 @@ module.exports = (configuration) => {
         ...configuration.contentType
     };
 
-    const BASE_PATH = path.join(process.cwd(), configuration.distDir || "dist");
+    const BASE_PATH = join(process.cwd(), configuration.distDir);
 
-    const USE_404_FILE = fs.existsSync(path.join(BASE_PATH, "404.html"));
-    const USE_500_FILE = fs.existsSync(path.join(BASE_PATH, "500.html"));
+    const USE_404_FILE = existsSync(join(BASE_PATH, "404.html"));
+    const USE_500_FILE = existsSync(join(BASE_PATH, "500.html"));
 
     const TXT_CONETENT_TYPE = [contentType.css, contentType.js, contentType.json];
     const MAX_TTL = 10;
@@ -40,13 +41,13 @@ module.exports = (configuration) => {
     class CacheValue {
         async localFile(filePath, requestUrl, fileContentType) {
             if (fileContentType == contentType.html && configuration.enableIsomorphic) {
-                this.data = await evaluateHtmlFile(fs.readFileSync(path.join(BASE_PATH, filePath), "utf8"), requestUrl);
+                this.data = await evaluateHtmlFile(readFileSync(join(BASE_PATH, filePath), "utf8"), requestUrl);
                 this.dataType = "txt";
             } else if (TXT_CONETENT_TYPE.indexOf(fileContentType) != -1) {
-                this.data = fs.readFileSync(path.join(BASE_PATH, filePath), "utf8");
+                this.data = readFileSync(join(BASE_PATH, filePath), "utf8");
                 this.dataType = "txt";
             } else {
-                this.data = fs.readFileSync(path.join(BASE_PATH, filePath));
+                this.data = readFileSync(join(BASE_PATH, filePath));
                 this.dataType = "bin";
             }
 
@@ -57,9 +58,9 @@ module.exports = (configuration) => {
         proxyFile(requestUrl) {
             return new Promise((resolve, reject) => {
                 const cdnUrl = configuration.proxy[requestUrl];
-            
-                const options = url.parse(cdnUrl);
-                
+
+                const options = parse(cdnUrl);
+
                 let buffer = Buffer.alloc(0);
                 (options.protocol == "https:" ? https : http).get(options, res => {
                     res.on("data", data => {
@@ -88,7 +89,7 @@ module.exports = (configuration) => {
                 includeNodeLocations: true,
                 runScripts: "dangerously"
             });
-        
+
             [...dom.window.document.getElementsByTagName("script").valueOf()]
                 .forEach(async script => {
                     if (script.attributes && script.attributes.src && script.attributes.src.value) {
@@ -96,13 +97,13 @@ module.exports = (configuration) => {
                         dom.window.eval(contentFile);
                     }
                 });
-        
+
             let increment = 0;
             let lastComputedHtmlMd5 = "";
 
             const loop = setInterval(() => {
                 const computedHtml = dom.window.document.documentElement.outerHTML;
-                const computedHtmlMd5 = crypto.createHash("md5").update(computedHtml).digest("hex");
+                const computedHtmlMd5 = createHash("md5").update(computedHtml).digest("hex");
 
                 if (lastComputedHtmlMd5 === computedHtmlMd5 || increment++ > 20) {
                     dom.window.stop();
@@ -173,23 +174,23 @@ module.exports = (configuration) => {
     }
 
     function gzipData(data) {
-        return zlib.gzipSync(data, {
+        return gzipSync(data, {
             level: 3
         });
     }
 
     return http.createServer(async (req, res) => {
         console.info(`[${new Date().toISOString()}] [${req.headers["x-real-ip"] || req.connection.remoteAddress}] [${req.headers["user-agent"]}] - ${req.method}: ${req.url}`);
-    
-        const fileUrl = path.join(BASE_PATH, req.url);
+
+        const fileUrl = join(BASE_PATH, req.url);
         const useGzip = (req.headers["accept-encoding"] || "").indexOf("gzip") != -1;
-    
+
         try {
             if (Object.keys(configuration.proxy).indexOf(req.url) != -1) {
                 const contentType = getContentType(req.url);
                 res.writeHead(200, buildHeader(contentType, useGzip));
                 res.write(await readProxy(req.url, useGzip));
-            } else if (fs.existsSync(fileUrl) && fs.lstatSync(fileUrl).isFile()) {
+            } else if (existsSync(fileUrl) && lstatSync(fileUrl).isFile()) {
                 const contentType = getContentType(req.url);
                 res.writeHead(200, buildHeader(contentType, useGzip));
                 res.write(await readFile(req.url, req.url, contentType, useGzip));
@@ -207,7 +208,7 @@ module.exports = (configuration) => {
                 res.write(await readFile("500.html", req.url, contentType.html, useGzip));
             }
         }
-    
+
         res.end();
     });
 }

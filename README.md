@@ -37,6 +37,7 @@ module.exports = {
     port: 8080,
     cacheCycle: 1800,
     distDir: "dist",
+    logDir: "/var/log/server.log",
     enableIsomorphic: true,
     header: {
         "Server": "eco-webserver",
@@ -47,7 +48,7 @@ module.exports = {
     contentType: {
         "mp4": "video/mpeg"
     },
-    proxy : {
+    proxy: {
         "/logo.png": "https://avatars3.githubusercontent.com/u/19231288?s=460&u=5c37f3bb39a8ba2a6e925f120e71b748b254e3d9&v=4"
     }
 }
@@ -56,10 +57,18 @@ module.exports = {
 - **port**: The default port of the application.
 - **cacheCycle**: Duration in seconds between two cache check cycles.
 - **distDir**: Location of website files to be exhibited.
+- **logDir**: Location of log file.
 - **enableIsomorphic**: Calculates a rendering of the JavaScript scripts before sending the page to the client.
 - **header**: Html headers of the different queries.
 - **contentType**: Allows you to add Content-Types if those supported by default by the application are not enough.
 - **proxy**: Allows you to associate a remote resource with a local URL in order to cache it.
+
+For PaaS or Docker platform users, it is possible to inject configuration through environment variables :
+
+- `ECO_PORT`: The default port of the application.
+- `ECO_CACHE_CYCLE`: Duration in seconds between two cache check cycles.
+- `ECO_DIST_DIR`: Location of website files to be exhibited.
+- `ECO_LOG_DIR`: Location of log file.
 
 ### File organisation
 
