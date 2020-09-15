@@ -1,3 +1,5 @@
+"use strict";
+
 module.exports = {
     port: 8080,
     cacheCycle: 1800,

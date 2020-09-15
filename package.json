@@ -1,6 +1,6 @@
 {
   "name": "eco-webserver",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Static file NodeJs server",
   "author": "Flavien PERIER <perier@flavien.io>",
   "license": "MIT",
@@ -8,9 +8,17 @@
   "bin": {
     "eco-webserver": "./cli.js"
   },
+  "scripts": {
+    "test": "jasmine --config=jasmine.json"
+  },
   "dependencies": {
     "canvas": "2.6.1",
     "jsdom": "16.4.0"
+  },
+  "devDependencies": {
+    "html-minifier": "4.0.0",
+    "jasmine": "3.6.1",
+    "supertest": "4.0.2"
   },
   "repository": {
     "type": "git",
