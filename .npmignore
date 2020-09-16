@@ -2,3 +2,7 @@ node_modules
 dist
 package-lock.json
 .vscode
+.github
+jasmine.json
+tests
+ecoconf.js

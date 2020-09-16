@@ -1,29 +1,33 @@
 const supertest = require("supertest");
 const fs = require("fs");
+const proxyquire = require("proxyquire").noPreserveCache();
 
-const ecoWebserver = require("../src/server");
 const testTools = require("./testTools");
 
 describe("server", () => {
     describe("Simple configuration", () => {
-        let configuration;
-
-        beforeAll(() => {
-            configuration = {
-                port: 8080,
-                cacheCycle: 1800,
-                distDir: "./tests/testDist/simple",
-                enableIsomorphic: false,
-                header: {
-                    "Test-Header": "Header-Value"
+        const mockConfiguration = {
+            "./configuration": {
+                default: {
+                    port: 8080,
+                    cacheCycle: 1800,
+                    distDir: "./tests/testDist/simple",
+                    logDir: "/dev/null",
+                    enableIsomorphic: false,
+                    header: {
+                        "Test-Header": "Header-Value"
+                    },
+                    contentType: {"html": "text/html", "css": "text/css", "js": "application/javascript", "json": "application/json"},
+                    proxy : {},
+                    use404File: false,
+                    use500File: false
                 },
-                contentType: {},
-                proxy : {}
+                "@global": true
             }
-        });
-    
+        };
+
         it("Should display a page", done => {
-            supertest(ecoWebserver(configuration))
+            supertest(proxyquire("../src/server", mockConfiguration)())
                 .get("/")
                 .expect(200)
                 .expect("Content-Type", "text/html")
@@ -43,7 +47,7 @@ describe("server", () => {
         });
 
         it("Should display a page with a redirection", done => {
-            supertest(ecoWebserver(configuration))
+            supertest(proxyquire("../src/server", mockConfiguration)())
                 .get("/redirection")
                 .expect(200)
                 .expect("Content-Type", "text/html")
@@ -63,7 +67,7 @@ describe("server", () => {
         });
 
         it("Should display a page with a custom header", done => {
-            supertest(ecoWebserver(configuration))
+            supertest(proxyquire("../src/server", mockConfiguration)())
                 .get("/redirection")
                 .expect(200)
                 .expect("Content-Type", "text/html")
@@ -85,22 +89,26 @@ describe("server", () => {
     });
 
     describe("Configuration with 404", () => {
-        let configuration;
-
-        beforeAll(() => {
-            configuration = {
-                port: 8080,
-                cacheCycle: 1800,
-                distDir: "./tests/testDist/404",
-                enableIsomorphic: false,
-                header: {},
-                contentType: {},
-                proxy : {}
+        const mockConfiguration = {
+            "./configuration": {
+                default: {
+                    port: 8080,
+                    cacheCycle: 1800,
+                    distDir: "./tests/testDist/404",
+                    logDir: "/dev/null",
+                    enableIsomorphic: false,
+                    header: {},
+                    contentType: {"html": "text/html", "css": "text/css", "js": "application/javascript", "json": "application/json"},
+                    proxy : {},
+                    use404File: true,
+                    use500File: false
+                },
+                "@global": true
             }
-        });
-    
+        };
+
         it("Should display a page with 404", done => {
-            supertest(ecoWebserver(configuration))
+            supertest(proxyquire("../src/server", mockConfiguration)())
                 .get("/redirection")
                 .expect(404)
                 .expect("Content-Type", "text/html")
@@ -121,27 +129,33 @@ describe("server", () => {
     });
 
     describe("Configuration with cache", () => {
-        let configuration;
-        const SANDBOX_DIR = "./tests/testDist/sandbox"
+        const SANDBOX_DIR = "./tests/testDist/sandbox";
+        const mockConfiguration = {
+            "./configuration": {
+                default: {
+                    port: 8080,
+                    cacheCycle: 10,
+                    distDir: SANDBOX_DIR,
+                    logDir: "/dev/null",
+                    enableIsomorphic: false,
+                    header: {},
+                    contentType: {"html": "text/html", "css": "text/css", "js": "application/javascript", "json": "application/json"},
+                    proxy : {},
+                    use404File: false,
+                    use500File: false
+                },
+                "@global": true
+            }
+        };
 
         beforeAll(() => {
             fs.mkdirSync(SANDBOX_DIR);
-
-            configuration = {
-                port: 8080,
-                cacheCycle: 10,
-                distDir: SANDBOX_DIR,
-                enableIsomorphic: false,
-                header: {},
-                contentType: {},
-                proxy : {}
-            }
         });
 
         afterAll(() => {
             fs.rmdirSync(SANDBOX_DIR, { recursive: true });
         });
-    
+
         it("Should display a page contained in the cache", done => {
             fs.writeFileSync(SANDBOX_DIR + "/index.html", `<!DOCTYPE html>
                 <html>
@@ -153,7 +167,7 @@ describe("server", () => {
                     </body>
                 </html>`);
 
-            const server = ecoWebserver(configuration);
+            const server = proxyquire("../src/server", mockConfiguration)();
 
             supertest(server)
                 .get("/")

@@ -2,6 +2,12 @@
   "name": "eco-webserver",
   "version": "1.0.1",
   "description": "Static file NodeJs server",
+  "keywords": [
+    "server",
+    "static",
+    "static-website",
+    "isomorphic"
+  ],
   "author": "Flavien PERIER <perier@flavien.io>",
   "license": "MIT",
   "main": "cli.js",
@@ -18,6 +24,7 @@
   "devDependencies": {
     "html-minifier": "4.0.0",
     "jasmine": "3.6.1",
+    "proxyquire": "2.1.3",
     "supertest": "4.0.2"
   },
   "repository": {
