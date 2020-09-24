@@ -166,7 +166,7 @@ async function readProxy(requestUrl, useGzip) {
 
 function gzipData(data) {
     return gzipSync(data, {
-        level: 3
+        level: 4
     });
 }
 
