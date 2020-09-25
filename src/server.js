@@ -98,7 +98,7 @@ function evaluateHtmlFile(fileContent, requestUrl) {
 
             if (lastComputedHtmlMd5 === computedHtmlMd5 || increment++ > 20) {
                 dom.window.stop();
-                resolve(computedHtml);
+                resolve(`<!DOCTYPE html>${computedHtml}`);
                 clearInterval(loop);
             } else {
                 lastComputedHtmlMd5 = computedHtmlMd5;
