@@ -1,3 +1,7 @@
+![license](https://badgen.net/github/license/flavien-perier/eco-webserver)
+[![npm version](https://badgen.net/npm/v/eco-webserver)](https://www.npmjs.com/package/eco-webserver)
+[![ci status](https://badgen.net/github/checks/flavien-perier/eco-webserver)](https://github.com/flavien-perier/eco-webserver)
+
 # eco-webserver
 
 Eco-webserver is a simple static file server.
