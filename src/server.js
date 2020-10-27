@@ -10,7 +10,10 @@ const { gzipSync } = require("zlib");
 const { createHash } = require("crypto");
 const { JSDOM } = require("jsdom");
 
+const Logger = require("./Logger");
 const configuration = require("./configuration").default;
+
+const logger = new Logger();
 
 const TXT_CONETENT_TYPE = [configuration.contentType.css, configuration.contentType.js, configuration.contentType.json];
 const MAX_TTL = 10;
@@ -172,7 +175,7 @@ function gzipData(data) {
 
 module.exports = () => {
     return http.createServer(async (req, res) => {
-        console.info(`[${new Date().toISOString()}] [${req.headers["x-real-ip"] || req.connection.remoteAddress}] [${req.headers["user-agent"]}] - ${req.method}: ${req.url}`);
+        logger.http(req.headers["x-real-ip"] || req.connection.remoteAddress, req.headers["user-agent"], req.method, req.url);
 
         const fileUrl = join(configuration.distDir, req.url);
         const useGzip = (req.headers["accept-encoding"] || "").indexOf("gzip") != -1;
@@ -194,7 +197,7 @@ module.exports = () => {
                 res.write(await readFile("index.html", req.url, configuration.contentType.html, useGzip));
             }
         } catch(err) {
-            console.error(`[${new Date().toISOString()}] Internal server error: ${err.text}`);
+            logger.error(`Internal server error: ${err.text}`, err);
             res.writeHead(500, "Internal server error", buildHeader(configuration.contentType.html, useGzip));
             if (configuration.use500File) {
                 res.write(await readFile("500.html", req.url, configuration.contentType.html, useGzip));
