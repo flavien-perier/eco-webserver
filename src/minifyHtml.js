@@ -3,6 +3,8 @@ const minifyJs = require("./minifyJs");
 
 module.exports = function minifyHtml(inputHtml) {
     return inputHtml
+        // Removes spaces at the beginning of the line.
+        .replace(/^\s*/gm, "")
         // Reformatting html opening tags.
         .replace(/<([\w\d-_]+)((?:\s+[\w\d-_]+\s*=\s*(?:["'].*?["']|[^ >]*))*)\s*?(\/)?\s*?>/sg, (_, baliseName, parameters, end) => {
             // Reformatting tags parameters.
@@ -16,5 +18,7 @@ module.exports = function minifyHtml(inputHtml) {
         // Reformatting html closing tags.
         .replace(/<\s*\/\s*([\w\d-_]+)>/sg, (_, baliseName) => `</${baliseName}>`)
         // Removes blanks between tags.
-        .replace(/>\s+</sg, "><");
+        .replace(/>\s+</sg, "><")
+        // Reformatting css.
+        .replace(/(<style.*?>)(.+?)<\/style>/sg, (_, balise, code) => `${balise}${minifyCss(code)}</style>`);
 }
