@@ -12,8 +12,7 @@ Eco-webserver is a simple static file server.
 - [X] Cache external file
 - [X] Isomorphic application
 - [X] GZIP implementation
-- [ ] Using threads for HTML rendering
-- [ ] Include html minifier
+- [ ] Include html/css/js minifiers
 
 ## Usage
 

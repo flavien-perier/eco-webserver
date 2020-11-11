@@ -12,13 +12,16 @@ const { createHash } = require("crypto");
 const jsdom = require("jsdom");
 const { Script } = require("vm");
 
-const Logger = require("./Logger");
 const configuration = require("./configuration").default;
+const minifyHtml = require("./minifyHtml");
+const minifyCss = require("./minifyCss");
+const minifyJs = require("./minifyJs");
+const Logger = require("./Logger");
 
 const logger = new Logger();
 const virtualConsole = new jsdom.VirtualConsole();
 
-const TXT_CONETENT_TYPE = [configuration.contentType.css, configuration.contentType.js, configuration.contentType.json];
+const TXT_CONETENT_TYPE = [configuration.contentType.html, configuration.contentType.css, configuration.contentType.js, configuration.contentType.json];
 const MAX_TTL = 10;
 
 const cache = new Map();
@@ -37,15 +40,27 @@ setInterval(() => {
 
 class CacheValue {
     async localFile(filePath, requestUrl, fileContentType) {
-        if (fileContentType == configuration.contentType.html && configuration.enableIsomorphic) {
-            this.data = await evaluateHtmlFile(readFileSync(join(configuration.distDir, filePath), "utf8"), requestUrl);
-            this.dataType = "txt";
-        } else if (TXT_CONETENT_TYPE.indexOf(fileContentType) != -1) {
+        if (TXT_CONETENT_TYPE.indexOf(fileContentType) != -1) {
             this.data = readFileSync(join(configuration.distDir, filePath), "utf8");
             this.dataType = "txt";
         } else {
             this.data = readFileSync(join(configuration.distDir, filePath));
             this.dataType = "bin";
+        }
+
+        if (fileContentType == configuration.contentType.html && configuration.enableIsomorphic)
+            this.data = await evaluateHtmlFile(this.data, requestUrl);
+        
+        switch(fileContentType) {
+            case configuration.contentType.html:
+                this.data = minifyHtml(this.data);
+                break;
+            case configuration.contentType.css:
+                this.data = minifyCss(this.data);
+                break;
+            case configuration.contentType.js:
+                this.data = minifyJs(this.data);
+                break;
         }
 
         this.ttl = 0;
