@@ -8,12 +8,15 @@ const { parse } = require("url");
 const { join } = require("path");
 const { gzipSync } = require("zlib");
 const { createHash } = require("crypto");
-const { JSDOM } = require("jsdom");
+
+const jsdom = require("jsdom");
+const { Script } = require("vm");
 
 const Logger = require("./Logger");
 const configuration = require("./configuration").default;
 
 const logger = new Logger();
+const virtualConsole = new jsdom.VirtualConsole();
 
 const TXT_CONETENT_TYPE = [configuration.contentType.css, configuration.contentType.js, configuration.contentType.json];
 const MAX_TTL = 10;
@@ -74,21 +77,45 @@ class CacheValue {
 
 function evaluateHtmlFile(fileContent, requestUrl) {
     return new Promise((resolve, reject) => {
-        const dom = new JSDOM(fileContent, {
+        const dom = new jsdom.JSDOM(fileContent, {
             url: `http://127.0.0.1:${configuration.port}${requestUrl}`,
             referrer: `http://127.0.0.1:${configuration.port}${requestUrl}`,
             contentType: "text/html",
             userAgent: "internal-eco-webserver",
+            virtualConsole: virtualConsole,
             strictSSL: false,
             includeNodeLocations: true,
-            runScripts: "dangerously"
+            storageQuota: 10000000,
+            runScripts: "outside-only"
         });
+
+        const vmContext = dom.getInternalVMContext();
+
+        const executeScript = (script) => {
+            try {
+                script.runInContext(vmContext)
+            } catch(err) {
+                logger.error("Error with script execution", err)
+            }
+        }
 
         [...dom.window.document.getElementsByTagName("script").valueOf()]
             .forEach(async script => {
                 if (script.attributes && script.attributes.src && script.attributes.src.value) {
-                    const contentFile = await readFile(script.attributes.src.value, script.attributes.src.value, configuration.contentType.js, false);
-                    dom.window.eval(contentFile);
+                    const scriptSrc = script.attributes.src.value;
+
+                    if (!/^http[s]?:\/\//.test(scriptSrc)) {
+                        executeScript(new Script(await readFile(scriptSrc, scriptSrc, configuration.contentType.js, false)));
+                    } else {
+                        let buffer = Buffer.alloc(0);
+                        (scriptSrc.split(":")[0] == "https" ? https : http).get(parse(scriptSrc), res => {
+                            res.on("data", data => {
+                                buffer = Buffer.concat([buffer, data]);
+                            }).on("end", () => {
+                                executeScript(new Script(buffer.toString()));
+                            });
+                        });
+                    }
                 }
             });
 
@@ -96,12 +123,12 @@ function evaluateHtmlFile(fileContent, requestUrl) {
         let lastComputedHtmlMd5 = "";
 
         const loop = setInterval(() => {
-            const computedHtml = dom.window.document.documentElement.outerHTML;
+            const computedHtml = dom.serialize();
             const computedHtmlMd5 = createHash("md5").update(computedHtml).digest("hex");
 
             if (lastComputedHtmlMd5 === computedHtmlMd5 || increment++ > 20) {
                 dom.window.stop();
-                resolve(`<!DOCTYPE html>${computedHtml}`);
+                resolve(computedHtml);
                 clearInterval(loop);
             } else {
                 lastComputedHtmlMd5 = computedHtmlMd5;
