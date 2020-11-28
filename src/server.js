@@ -24,8 +24,16 @@ const virtualConsole = new jsdom.VirtualConsole();
 const TXT_CONETENT_TYPE = [configuration.contentType.html, configuration.contentType.css, configuration.contentType.js, configuration.contentType.json];
 const MAX_TTL = 10;
 
+/**
+ * Associates a URL with its content in the cache.
+ *
+ * @type {Map<string, CacheValue>}
+ */
 const cache = new Map();
 
+/**
+ * Cleans at regular time intervals cache resources that have not been accessed for a long time.
+ */
 setInterval(() => {
     cache.forEach((value, key, cache) => {
         if (value.ttl <= 0) {
@@ -38,8 +46,13 @@ setInterval(() => {
     });
 }, configuration.cacheCycle * 1000);
 
+/**
+ * Content of a cached resource.
+ */
 class CacheValue {
     /**
+     * Caching a local file.
+     *
      * @param {string} filePath
      * @param {string} requestUrl
      * @param {string} fileContentType
@@ -74,8 +87,10 @@ class CacheValue {
     }
 
     /**
+     * Caching a remote file.
+     *
      * @param {string} requestUrl
-     * @returns {Promise<any>}
+     * @returns {Promise<void>}
      */
     proxyFile(requestUrl) {
         return new Promise((resolve, reject) => {
@@ -103,12 +118,15 @@ class CacheValue {
 }
 
 /**
+ * Function allowing to make a pre-rendering of the java script on the backend side.
+ *
  * @param {any} fileContent
  * @param {string} requestUrl
  * @returns {Promise<any>}
  */
 function evaluateHtmlFile(fileContent, requestUrl) {
     return new Promise((resolve, reject) => {
+        // Declares a virtual DOM.
         const dom = new jsdom.JSDOM(fileContent, {
             url: `http://127.0.0.1:${configuration.port}${requestUrl}`,
             referrer: `http://127.0.0.1:${configuration.port}${requestUrl}`,
@@ -117,23 +135,25 @@ function evaluateHtmlFile(fileContent, requestUrl) {
             virtualConsole: virtualConsole,
             strictSSL: false,
             includeNodeLocations: true,
-            storageQuota: 10000000,
             runScripts: "outside-only"
         });
 
         const vmContext = dom.getInternalVMContext();
 
         /**
+         * Function to execute a script in the virtual DOM.
+         *
          * @param {Script} script
          */
         const executeScript = (script) => {
             try {
-                script.runInContext(vmContext)
+                script.runInContext(vmContext);
             } catch(err) {
-                logger.error("Error with script execution", err)
+                logger.error("Error with script execution", err);
             }
         }
 
+        // Finds the source of each script and sends it to the `executeScript` function.
         [...dom.window.document.getElementsByTagName("script").valueOf()]
             .forEach(async script => {
                 if (script.attributes && script.attributes.src && script.attributes.src.value) {
@@ -151,8 +171,12 @@ function evaluateHtmlFile(fileContent, requestUrl) {
                     } else {
                         executeScript(new Script(await readFile(scriptSrc, scriptSrc, configuration.contentType.js, false)));
                     }
+                } else {
+                    executeScript(new Script(script.innerHTML));
                 }
             });
+
+        // Checks if the dom is still being modified. If not, displays its current status.
 
         let increment = 0;
         let lastComputedHtmlMd5 = "";
@@ -173,6 +197,8 @@ function evaluateHtmlFile(fileContent, requestUrl) {
 }
 
 /**
+ * Gives the "content-type" of a resource according to its extension.
+ *
  * @param {string} filePath
  * @returns {any}
  */
@@ -193,6 +219,8 @@ function getContentType(filePath) {
 }
 
 /**
+ * Builds the response header.
+ *
  * @param {string} contentType
  * @param {boolean} useGzip
  * @returns {any}
@@ -211,6 +239,8 @@ function buildHeader(contentType, useGzip) {
 }
 
 /**
+ * Reads the contents of a resource from the `dist` folder.
+ *
  * @param {string} filePath
  * @param {string} requestUrl
  * @param {string} fileContentType
@@ -232,6 +262,8 @@ async function readFile(filePath, requestUrl, fileContentType, useGzip) {
 }
 
 /**
+ * Retrieves the content of a remote resource.
+ *
  * @param {string} requestUrl
  * @param {boolean} useGzip
  * @returns {Promise<any>}
@@ -251,6 +283,8 @@ async function readProxy(requestUrl, useGzip) {
 }
 
 /**
+ * Compresses a resource with the `gzip` algorithm.
+ *
  * @param {any} data
  * @returns {Buffer}
  */
@@ -260,6 +294,11 @@ function gzipData(data) {
     });
 }
 
+/**
+ * Eco-webserver
+ *
+ * @returns {http.Server}
+ */
 module.exports = () => {
     return http.createServer(async (req, res) => {
         logger.http(req.headers["x-real-ip"] || req.connection.remoteAddress, req.headers["user-agent"], req.method, req.url);

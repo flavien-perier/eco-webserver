@@ -4,6 +4,8 @@ const minifyCss = require("./minifyCss");
 const minifyJs = require("./minifyJs");
 
 /**
+ * Reforms a HTML page.
+ *
  * @param {string} inputHtml
  * @returns {string}
  */

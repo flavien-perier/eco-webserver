@@ -1,6 +1,8 @@
 "use strict";
 
 /**
+ * Reforms a CSS style page.
+ *
  * @param {string} inputCss
  * @returns {string}
  */

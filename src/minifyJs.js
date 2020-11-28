@@ -6,6 +6,8 @@ const Logger = require("./Logger");
 const logger = new Logger();
 
 /**
+ * Reforms a JavaScript code.
+ *
  * @param {string} inputJs
  * @returns {string}
  */

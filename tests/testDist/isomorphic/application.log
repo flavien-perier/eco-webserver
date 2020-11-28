@@ -1,9 +1,0 @@
-info: [2020-11-27T23:42:34.798Z] Server start on the port 8080
-http: [2020-11-27T23:42:44.722Z] [::ffff:127.0.0.1] [Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.12; rv:83.0) Gecko/20100101 Firefox/83.0] - GET: /
-error: [2020-11-27T23:42:44.725Z] Internal server error: undefined
-http: [2020-11-27T23:42:58.423Z] [::ffff:127.0.0.1] [Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.12; rv:83.0) Gecko/20100101 Firefox/83.0] - GET: /
-error: [2020-11-27T23:42:58.423Z] Internal server error: undefined
-http: [2020-11-27T23:42:58.522Z] [::ffff:127.0.0.1] [Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.12; rv:83.0) Gecko/20100101 Firefox/83.0] - GET: /favicon.ico
-error: [2020-11-27T23:42:58.523Z] Internal server error: undefined
-http: [2020-11-27T23:43:08.929Z] [::ffff:127.0.0.1] [Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.12; rv:83.0) Gecko/20100101 Firefox/83.0] - GET: /
-error: [2020-11-27T23:43:08.929Z] Internal server error: undefined

@@ -1,1 +1,1 @@
-document.getElementById("span_2").innerText = "test script 2";
+document.getElementById("span_2").innerHTML = "test script 2";

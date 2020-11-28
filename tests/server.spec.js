@@ -246,12 +246,12 @@ describe("server", () => {
                         </head>
                         <body>
                             <h1>Isomorphic</h1>
-                            <span id="span_1">test script 1</span>
-                            <span id="span_2">test script 2</span>
+                            <span id=span_1>test script 1</span>
+                            <span id=span_2>test script 2</span>
                             <script>
-                                document.getElementById("span_1").innerText = "test script 1";
+                                document.getElementById("span_1").innerHTML = "test script 1";
                             </script>
-                            <script src="./script.js"></script>
+                            <script src=./script.js></script>
                         </body>
                     </html>`);
                     done();
