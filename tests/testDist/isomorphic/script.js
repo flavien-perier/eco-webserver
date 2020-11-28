@@ -1,0 +1,1 @@
+document.getElementById("span_2").innerText = "test script 2";

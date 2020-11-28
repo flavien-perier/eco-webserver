@@ -7,6 +7,7 @@ describe("minifyCss", () => {
             border: 1px solid #000;
         }
         
+        /* Test comment */
         .test {
             background-color : blue;
         }`;

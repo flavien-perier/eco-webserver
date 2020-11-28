@@ -39,6 +39,12 @@ setInterval(() => {
 }, configuration.cacheCycle * 1000);
 
 class CacheValue {
+    /**
+     * @param {string} filePath
+     * @param {string} requestUrl
+     * @param {string} fileContentType
+     * @returns {Promise<void>}
+     */
     async localFile(filePath, requestUrl, fileContentType) {
         if (TXT_CONETENT_TYPE.indexOf(fileContentType) != -1) {
             this.data = readFileSync(join(configuration.distDir, filePath), "utf8");
@@ -50,7 +56,7 @@ class CacheValue {
 
         if (fileContentType == configuration.contentType.html && configuration.enableIsomorphic)
             this.data = await evaluateHtmlFile(this.data, requestUrl);
-        
+
         switch(fileContentType) {
             case configuration.contentType.html:
                 this.data = minifyHtml(this.data);
@@ -67,11 +73,17 @@ class CacheValue {
         this.gzipData = gzipData(this.data);
     }
 
+    /**
+     * @param {string} requestUrl
+     * @returns {Promise<any>}
+     */
     proxyFile(requestUrl) {
         return new Promise((resolve, reject) => {
-            const cdnUrl = configuration.proxy[requestUrl];
+            const requestBaseUrl = Object.keys(configuration.proxy).filter(key => key === requestUrl.substr(0, key.length))[0];
+            const proxyBaseUrl = configuration.proxy[requestBaseUrl];
 
-            const options = parse(cdnUrl);
+            const proxyUrl = `${proxyBaseUrl}${requestUrl.substr(requestBaseUrl.length)}`;
+            const options = parse(proxyUrl);
 
             let buffer = Buffer.alloc(0);
             (options.protocol == "https:" ? https : http).get(options, res => {
@@ -90,6 +102,11 @@ class CacheValue {
     }
 }
 
+/**
+ * @param {any} fileContent
+ * @param {string} requestUrl
+ * @returns {Promise<any>}
+ */
 function evaluateHtmlFile(fileContent, requestUrl) {
     return new Promise((resolve, reject) => {
         const dom = new jsdom.JSDOM(fileContent, {
@@ -106,6 +123,9 @@ function evaluateHtmlFile(fileContent, requestUrl) {
 
         const vmContext = dom.getInternalVMContext();
 
+        /**
+         * @param {Script} script
+         */
         const executeScript = (script) => {
             try {
                 script.runInContext(vmContext)
@@ -119,9 +139,7 @@ function evaluateHtmlFile(fileContent, requestUrl) {
                 if (script.attributes && script.attributes.src && script.attributes.src.value) {
                     const scriptSrc = script.attributes.src.value;
 
-                    if (!/^http[s]?:\/\//.test(scriptSrc)) {
-                        executeScript(new Script(await readFile(scriptSrc, scriptSrc, configuration.contentType.js, false)));
-                    } else {
+                    if (/^http[s]?:\/\//.test(scriptSrc)) {
                         let buffer = Buffer.alloc(0);
                         (scriptSrc.split(":")[0] == "https" ? https : http).get(parse(scriptSrc), res => {
                             res.on("data", data => {
@@ -130,6 +148,8 @@ function evaluateHtmlFile(fileContent, requestUrl) {
                                 executeScript(new Script(buffer.toString()));
                             });
                         });
+                    } else {
+                        executeScript(new Script(await readFile(scriptSrc, scriptSrc, configuration.contentType.js, false)));
                     }
                 }
             });
@@ -152,11 +172,15 @@ function evaluateHtmlFile(fileContent, requestUrl) {
     });
 }
 
+/**
+ * @param {string} filePath
+ * @returns {any}
+ */
 function getContentType(filePath) {
     const parsing = /\.([a-zA-Z0-9]+)$/.exec(filePath);
 
     if (!parsing) {
-        return null;
+        return configuration.contentType.html;
     }
 
     const extension = parsing[1];
@@ -168,6 +192,11 @@ function getContentType(filePath) {
     }
 }
 
+/**
+ * @param {string} contentType
+ * @param {boolean} useGzip
+ * @returns {any}
+ */
 function buildHeader(contentType, useGzip) {
     const header = {
         "Content-Type": contentType,
@@ -181,6 +210,13 @@ function buildHeader(contentType, useGzip) {
     return header;
 }
 
+/**
+ * @param {string} filePath
+ * @param {string} requestUrl
+ * @param {string} fileContentType
+ * @param {boolean} useGzip
+ * @returns {Promise<any>}
+ */
 async function readFile(filePath, requestUrl, fileContentType, useGzip) {
     let cacheValue;
     if (cache.has(requestUrl)) {
@@ -195,6 +231,11 @@ async function readFile(filePath, requestUrl, fileContentType, useGzip) {
     return useGzip ? cacheValue.gzipData : cacheValue.data;
 }
 
+/**
+ * @param {string} requestUrl
+ * @param {boolean} useGzip
+ * @returns {Promise<any>}
+ */
 async function readProxy(requestUrl, useGzip) {
     let cacheValue;
     if (cache.has(requestUrl)) {
@@ -209,6 +250,10 @@ async function readProxy(requestUrl, useGzip) {
     return useGzip ? cacheValue.gzipData : cacheValue.data;
 }
 
+/**
+ * @param {any} data
+ * @returns {Buffer}
+ */
 function gzipData(data) {
     return gzipSync(data, {
         level: 4
@@ -223,7 +268,7 @@ module.exports = () => {
         const useGzip = (req.headers["accept-encoding"] || "").indexOf("gzip") != -1;
 
         try {
-            if (Object.keys(configuration.proxy).indexOf(req.url) != -1) {
+            if (Object.keys(configuration.proxy).some(url => url === req.url.substr(0, url.length))) {
                 const contentType = getContentType(req.url);
                 res.writeHead(200, buildHeader(contentType, useGzip));
                 res.write(await readProxy(req.url, useGzip));

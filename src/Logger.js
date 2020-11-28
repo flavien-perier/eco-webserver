@@ -1,3 +1,5 @@
+"use strict";
+
 const { appendFileSync } = require("fs");
 
 const configuration = require("./configuration").default;
@@ -18,6 +20,9 @@ function print(logLevel, logMessage) {
 class Logger {
     constructor() {}
 
+    /**
+     * @param {string} message
+     */
     info(message) {
         print("info", message);
     }

@@ -1,8 +1,16 @@
+"use strict";
+
 const minifyCss = require("./minifyCss");
 const minifyJs = require("./minifyJs");
 
+/**
+ * @param {string} inputHtml
+ * @returns {string}
+ */
 module.exports = function minifyHtml(inputHtml) {
     return inputHtml
+        // Deletes comments
+        .replace(/<!--.*?-->/gs, "")
         // Removes spaces at the beginning of the line.
         .replace(/^\s*/gm, "")
         // Reformatting html opening tags.
@@ -10,7 +18,8 @@ module.exports = function minifyHtml(inputHtml) {
             // Reformatting tags parameters.
             const parametersList = [];
             parameters.replace(/([\w\d-_]+) *= *(["'].*?["']|\S*)/sg, (_, key, value) => {
-                if (value.search(" ") == -1) parametersList.push(`${key}=${value.replace(/["`]/sg, "")}`);
+                if (value == "\"\"" || value == "''" || value == "") {}
+                else if (value.search(" ") == -1) parametersList.push(`${key}=${value.replace(/["`]/sg, "")}`);
                 else parametersList.push(`${key}=${value}`);
             });
             return `<${baliseName}${parametersList.length > 0 ? " " : ""}${parametersList.join(" ")}${end || ""}>`;
@@ -20,5 +29,6 @@ module.exports = function minifyHtml(inputHtml) {
         // Removes blanks between tags.
         .replace(/>\s+</sg, "><")
         // Reformatting css.
-        .replace(/(<style.*?>)(.+?)<\/style>/sg, (_, balise, code) => `${balise}${minifyCss(code)}</style>`);
+        .replace(/(<style.*?>)(.+?)<\/style>/sg, (_, balise, code) => `${balise}${minifyCss(code)}</style>`)
+        .replace(/(<script.*?>)(.+?)<\/script>/sg, (_, balise, code) => `${balise}${minifyJs(code)}</script>`);
 }

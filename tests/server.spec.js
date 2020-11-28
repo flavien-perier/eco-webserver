@@ -1,5 +1,6 @@
 const supertest = require("supertest");
 const fs = require("fs");
+const http = require("http");
 const proxyquire = require("proxyquire").noPreserveCache();
 
 const testTools = require("./testTools");
@@ -206,6 +207,122 @@ describe("server", () => {
                             fs.unlinkSync(SANDBOX_DIR + "/index.html");
                             done();
                         });
+                });
+        });
+    });
+
+    describe("Configuration with isomorphic", () => {
+        const mockConfiguration = {
+            "./configuration": {
+                default: {
+                    port: 8080,
+                    cacheCycle: 1800,
+                    distDir: "./tests/testDist/isomorphic",
+                    logDir: "/dev/null",
+                    enableIsomorphic: true,
+                    header: {
+                        "Test-Header": "Header-Value"
+                    },
+                    contentType: {"html": "text/html", "css": "text/css", "js": "application/javascript", "json": "application/json"},
+                    proxy : {},
+                    use404File: false,
+                    use500File: false
+                },
+                "@global": true
+            }
+        };
+
+        it("Should load JavaScript in the page", done => {
+            supertest(proxyquire("../src/server", mockConfiguration)())
+                .get("/")
+                .expect(200)
+                .expect("Content-Type", "text/html")
+                .end((err, res) => {
+                    expect(err).toBeNull();
+                    testTools.compareHtml(res.text, `<!DOCTYPE html>
+                    <html>
+                        <head>
+                            <title>Isomorphic</title>
+                        </head>
+                        <body>
+                            <h1>Isomorphic</h1>
+                            <span id="span_1">test script 1</span>
+                            <span id="span_2">test script 2</span>
+                            <script>
+                                document.getElementById("span_1").innerText = "test script 1";
+                            </script>
+                            <script src="./script.js"></script>
+                        </body>
+                    </html>`);
+                    done();
+                });
+        });
+    });
+    
+    describe("Configuration with proxy", () => {
+        const TEST_PORT = 9999;
+
+        const mockConfiguration = {
+            "./configuration": {
+                default: {
+                    port: 8080,
+                    cacheCycle: 1800,
+                    distDir: "./tests/testDist/simple",
+                    logDir: "/dev/null",
+                    enableIsomorphic: false,
+                    header: {},
+                    contentType: {"html": "text/html", "css": "text/css", "js": "application/javascript", "json": "application/json"},
+                    proxy : {
+                        "/test": `http://127.0.0.1:${TEST_PORT}`
+                    },
+                    use404File: false,
+                    use500File: false
+                },
+                "@global": true
+            }
+        };
+
+        let server = http.createServer((req, res) => {
+            console.log(req.url)
+            if (req.url == "/path") {
+                res.writeHead(200);
+                res.write("test path");
+            } else {
+                res.writeHead(200);
+                res.write("base path");
+            }
+            res.end();
+        });
+
+        beforeAll(() => {
+            server.listen(TEST_PORT, null, null, null);
+        });
+
+        afterAll(() => {
+            server.close();
+        });
+
+        it("Should display a remote base path through the proxy", done => {
+            supertest(proxyquire("../src/server", mockConfiguration)())
+                .get("/test")
+                .expect(200)
+                .expect("Content-Type", "text/html")
+                .end((err, res) => {
+                    expect(err).toBeNull();
+                    expect(res.text).toEqual("base path");
+                    done();
+                });
+        });
+
+        it("Should display a remote resource through the proxy", done => {
+            supertest(proxyquire("../src/server", mockConfiguration)())
+                .get("/test/path")
+                .expect(200)
+                .expect("Content-Type", "text/html")
+                .end((err, res) => {
+                    expect(err).toBeNull();
+                    expect(res.text).toEqual("test path");
+                    done();
                 });
         });
     });
