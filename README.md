@@ -9,12 +9,12 @@ Eco-webserver is a simple static file server.
 ## Features
 
 - [X] Cache files
-- [X] Cache external file
+- [X] Reverse proxy
 - [X] Isomorphic application
 - [X] GZIP implementation
-- [X] Reverse proxy
 - [X] Include html minifiers
 - [X] Include css minifiers
+- [X] Include json minifiers
 - [X] Include js minifiers [uglify-js](https://www.npmjs.com/package/uglify-js)
 
 ## Usage

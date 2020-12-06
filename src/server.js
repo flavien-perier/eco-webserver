@@ -16,6 +16,7 @@ const configuration = require("./configuration").default;
 const minifyHtml = require("./minifyHtml");
 const minifyCss = require("./minifyCss");
 const minifyJs = require("./minifyJs");
+const minifyJson = require("./minifyJson");
 const Logger = require("./Logger");
 
 const logger = new Logger();
@@ -79,6 +80,9 @@ class CacheValue {
                 break;
             case configuration.contentType.js:
                 this.data = minifyJs(this.data);
+                break;
+            case configuration.contentType.json:
+                this.data = minifyJson(this.data);
                 break;
         }
 
