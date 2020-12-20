@@ -10,7 +10,7 @@ const KEY_VALUE_MATCHER = /([\w\d-_]+) *= *(["'].*?["']|\S*)/sg;
 const CLOSING_TAG_MATCHER = /<\s*\/\s*([\w\d-_]+)>/sg;
 const BLANK_SPACE_BETWEEN_TAGS_MATCHER = />\s+</sg;
 const STYLE_TAG_MATCHER = /(<style.*?>)(.+?)<\/style>/sg;
-const SCRIPT_TAG_MATCHER = /(<script.*?>)(.+?)<\/script>/sg;
+const SCRIPT_TAG_MATCHER = /(<script.*?>)(.*?)<\/script>/sg;
 
 /**
  * Reforms a HTML page.
@@ -44,14 +44,14 @@ module.exports = async function minifyHtml(inputHtml) {
 
     // Reformatting js.
     await new Promise((resolve, reject) => {
-        const scriptTags = minifiedHtml.match(SCRIPT_TAG_MATCHER) || [];
+        const scriptTags = [...minifiedHtml.match(SCRIPT_TAG_MATCHER) || []].filter(element => element != "");
         let countTasks = 0;
         if (scriptTags.length == 0) {
             resolve();
             return;
         }
 
-        scriptTags.map(scriptTag => SCRIPT_TAG_MATCHER.compile().exec(scriptTag)).forEach(async ([fullMatch, balise, code]) => {
+        scriptTags.map(scriptTag => new RegExp(SCRIPT_TAG_MATCHER).exec(scriptTag)).forEach(async ([fullMatch, balise, code]) => {
             minifiedHtml = minifiedHtml.replace(fullMatch, `${balise}${await minifyJs(code || "")}</script>`);
             if (++countTasks >= scriptTags.length) {
                 resolve();
