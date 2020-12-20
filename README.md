@@ -15,7 +15,7 @@ Eco-webserver is a simple static file server.
 - [X] Include html minifiers
 - [X] Include css minifiers
 - [X] Include json minifiers
-- [X] Include js minifiers [uglify-js](https://www.npmjs.com/package/uglify-js)
+- [X] Include js minifiers with [terser](https://www.npmjs.com/package/terser)
 
 ## Usage
 

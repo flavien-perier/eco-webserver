@@ -73,13 +73,13 @@ class CacheValue {
 
         switch(fileContentType) {
             case configuration.contentType.html:
-                this.data = minifyHtml(this.data);
+                this.data = await minifyHtml(this.data);
                 break;
             case configuration.contentType.css:
                 this.data = minifyCss(this.data);
                 break;
             case configuration.contentType.js:
-                this.data = minifyJs(this.data);
+                this.data = await minifyJs(this.data);
                 break;
             case configuration.contentType.json:
                 this.data = minifyJson(this.data);

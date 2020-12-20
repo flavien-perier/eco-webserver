@@ -1,6 +1,6 @@
 {
   "name": "eco-webserver",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Static file NodeJs server",
   "keywords": [
     "static",
@@ -23,7 +23,7 @@
   "dependencies": {
     "canvas": "2.6.1",
     "jsdom": "16.4.0",
-    "uglify-js": "3.11.6"
+    "terser": "5.5.1"
   },
   "devDependencies": {
     "jasmine": "3.6.1",
