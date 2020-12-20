@@ -1,7 +1,5 @@
 "use strict";
 
-const uglifyJs = require("uglify-js");
-
 const Logger = require("./Logger");
 const logger = new Logger();
 

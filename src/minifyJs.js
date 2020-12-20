@@ -1,6 +1,5 @@
 "use strict";
 
-const uglifyJs = require("uglify-js");
 const { minify } = require("terser");
 
 const Logger = require("./Logger");
