@@ -76,4 +76,24 @@ describe("minifyHtml", () => {
 
         expect(await minifyHtml(inputHtml)).toEqual(expectedHtml);
     });
+
+    it("Test cache", async () => {
+        const inputHtml = `<html lang="fr">
+            <!-- Test
+                comment -->
+            <p id="id1" class="class1 class2" param="key=value">test< / p><br class = ""/ >
+        < / html>`;
+
+        const expectedHtml = "<html lang=fr><p id=id1 class=\"class1 class2\" param=\"key=value\">test</p><br/></html>";
+
+        // Processing
+        expect(await minifyHtml(inputHtml)).toEqual(expectedHtml);
+
+        // Cache
+        expect(await minifyHtml(inputHtml)).toEqual(expectedHtml);
+
+        // Modify cache file and read it
+        fs.writeFileSync(TEST_CACHE + "/f837f253107bf544137890cba56cd6e0a6abd3af1ce37c2cb448bea54a149efa.html", "test");
+        expect(await minifyHtml(inputHtml)).toEqual("test");
+    });
 });
