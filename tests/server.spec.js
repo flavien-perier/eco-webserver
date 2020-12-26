@@ -5,6 +5,8 @@ const proxyquire = require("proxyquire").noPreserveCache();
 
 const testTools = require("./testTools");
 
+const TEST_CACHE = ".tests/test-cache";
+
 describe("server", () => {
     describe("Simple configuration", () => {
         const mockConfiguration = {
@@ -13,6 +15,7 @@ describe("server", () => {
                     port: 8080,
                     cacheCycle: 1800,
                     distDir: "./tests/testDist/simple",
+                    cacheDir: TEST_CACHE,
                     logDir: "/dev/null",
                     enableIsomorphic: false,
                     header: {
@@ -26,6 +29,10 @@ describe("server", () => {
                 "@global": true
             }
         };
+
+        afterEach(() => {
+            fs.rmdirSync(TEST_CACHE, { recursive: true });
+        });
 
         it("Should display a page", done => {
             supertest(proxyquire("../src/server", mockConfiguration)())
@@ -96,6 +103,7 @@ describe("server", () => {
                     port: 8080,
                     cacheCycle: 1800,
                     distDir: "./tests/testDist/404",
+                    cacheDir: TEST_CACHE,
                     logDir: "/dev/null",
                     enableIsomorphic: false,
                     header: {},
@@ -107,6 +115,10 @@ describe("server", () => {
                 "@global": true
             }
         };
+
+        afterEach(() => {
+            fs.rmdirSync(TEST_CACHE, { recursive: true });
+        });
 
         it("Should display a page with 404", done => {
             supertest(proxyquire("../src/server", mockConfiguration)())
@@ -137,6 +149,7 @@ describe("server", () => {
                     port: 8080,
                     cacheCycle: 10,
                     distDir: SANDBOX_DIR,
+                    cacheDir: TEST_CACHE,
                     logDir: "/dev/null",
                     enableIsomorphic: false,
                     header: {},
@@ -148,6 +161,10 @@ describe("server", () => {
                 "@global": true
             }
         };
+
+        afterEach(() => {
+            fs.rmdirSync(TEST_CACHE, { recursive: true });
+        });
 
         beforeAll(() => {
             fs.mkdirSync(SANDBOX_DIR);
@@ -218,6 +235,7 @@ describe("server", () => {
                     port: 8080,
                     cacheCycle: 1800,
                     distDir: "./tests/testDist/isomorphic",
+                    cacheDir: TEST_CACHE,
                     logDir: "/dev/null",
                     enableIsomorphic: true,
                     header: {
@@ -231,6 +249,10 @@ describe("server", () => {
                 "@global": true
             }
         };
+
+        afterEach(() => {
+            fs.rmdirSync(TEST_CACHE, { recursive: true });
+        });
 
         it("Should load JavaScript in the page", done => {
             supertest(proxyquire("../src/server", mockConfiguration)())
@@ -268,6 +290,7 @@ describe("server", () => {
                     port: 8080,
                     cacheCycle: 1800,
                     distDir: "./tests/testDist/simple",
+                    cacheDir: TEST_CACHE,
                     logDir: "/dev/null",
                     enableIsomorphic: false,
                     header: {},
@@ -281,6 +304,10 @@ describe("server", () => {
                 "@global": true
             }
         };
+
+        afterEach(() => {
+            fs.rmdirSync(TEST_CACHE, { recursive: true });
+        });
 
         let server = http.createServer((req, res) => {
             console.log(req.url)

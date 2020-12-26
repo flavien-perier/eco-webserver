@@ -1,5 +1,7 @@
 "use strict";
 
+const { writeProcessingCache, readProcessingCache } = require("./processingCache");
+
 const COMMENT_MATCHER = /\/\*.*?\*\//gs;
 const BEGINNING_SAPCE_MATCHER = /^\s*/gm;
 const NEW_LINE_MATCHER = /[\n|\t]/g;
@@ -14,7 +16,13 @@ const CLOSING_BRACES_MATCHER = /;?\s*}\s*/gm;
  * @returns {string}
  */
 module.exports = function minifyCss(inputCss) {
-    return inputCss
+    const cacheCss = readProcessingCache(inputCss, "css");
+
+    if (cacheCss) {
+        return cacheCss;
+    }
+
+    const outputCss = inputCss
         // Deletes comments
         .replace(COMMENT_MATCHER, "")
         // Removes spaces at the beginning of the line.
@@ -27,4 +35,8 @@ module.exports = function minifyCss(inputCss) {
         .replace(OPENING_BRACES_MATCHER, "{")
         // Closing braces.
         .replace(CLOSING_BRACES_MATCHER, "}");
+
+    writeProcessingCache(inputCss, outputCss, "css");
+    
+    return outputCss;
 }

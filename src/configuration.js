@@ -17,6 +17,7 @@ exports.default = {
     port: process.env.ECO_PORT || ecoconf.port || 8080,
     cacheCycle: process.env.ECO_CACHE_CYCLE || ecoconf.cacheCycle || 1800,
     distDir: DIST_DIR,
+    cacheDir: process.env.ECO_CACHE_DIR || ecoconf.cacheDir || "/tmp/eco-webserver",
     logDir: process.env.ECO_LOG_DIR || ecoconf.logDir || "/var/log/server.log",
     enableIsomorphic: ecoconf.enableIsomorphic ? true : false,
     header: ecoconf.header || {},

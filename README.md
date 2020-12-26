@@ -43,6 +43,7 @@ module.exports = {
     port: 8080,
     cacheCycle: 1800,
     distDir: "dist",
+    cacheDir: "cache",
     logDir: "/tmp/eco-webserver.log",
     enableIsomorphic: true,
     header: {
@@ -63,6 +64,7 @@ module.exports = {
 - **port**: The default port of the application.
 - **cacheCycle**: Duration in seconds between two cache check cycles.
 - **distDir**: Location of website files to be exhibited.
+- **cacheDir**: Location of the working cache.
 - **logDir**: Location of log file.
 - **enableIsomorphic**: Calculates a rendering of the JavaScript scripts before sending the page to the client.
 - **header**: Html headers of the different queries.
@@ -74,6 +76,7 @@ For PaaS or Docker platform users, it is possible to inject configuration throug
 - `ECO_PORT`: The default port of the application.
 - `ECO_CACHE_CYCLE`: Duration in seconds between two cache check cycles.
 - `ECO_DIST_DIR`: Location of website files to be exhibited.
+- `ECO_CACHE_DIR`: Location of the working cache.
 - `ECO_LOG_DIR`: Location of log file.
 
 ### File organisation
@@ -85,3 +88,5 @@ If a client queries an unknown URL, the server will automatically redirect the r
 Each time a user requests a resource, it is cached. If the resource is requested again, its TTL will be incremented by 1 to a maximum of 10.
 
 At each cache cycle (every 15 minutes in the default configuration), all TTL values are decremented by 1 and those falling to 0 are deleted from the cache.
+
+Minification operations on resources are kept in a disk cache. The objective here is not to redo a minification operation that would have already been done in the past. Consequently, the cache associates the sha256 sum of a resource with its result after processing.

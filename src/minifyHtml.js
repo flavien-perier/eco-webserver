@@ -2,6 +2,7 @@
 
 const minifyCss = require("./minifyCss");
 const minifyJs = require("./minifyJs");
+const { writeProcessingCache, readProcessingCache } = require("./processingCache");
 
 const COMMENT_MATCHER = /<!--.*?-->/gs;
 const BEGINNING_SAPCE_MATCHER = /^\s*/gm;
@@ -9,7 +10,7 @@ const OPENING_TAG_MATCHER = /<([\w\d-_]+)((?:\s+[\w\d-_]+\s*=\s*(?:["'].*?["']|[
 const KEY_VALUE_MATCHER = /([\w\d-_]+) *= *(["'].*?["']|\S*)/sg;
 const CLOSING_TAG_MATCHER = /<\s*\/\s*([\w\d-_]+)>/sg;
 const BLANK_SPACE_BETWEEN_TAGS_MATCHER = />\s+</sg;
-const STYLE_TAG_MATCHER = /(<style.*?>)(.+?)<\/style>/sg;
+const STYLE_TAG_MATCHER = /(<style.*?>)(.*?)<\/style>/sg;
 const SCRIPT_TAG_MATCHER = /(<script.*?>)(.*?)<\/script>/sg;
 
 /**
@@ -19,7 +20,13 @@ const SCRIPT_TAG_MATCHER = /(<script.*?>)(.*?)<\/script>/sg;
  * @returns {Promise<string>}
  */
 module.exports = async function minifyHtml(inputHtml) {
-    let minifiedHtml = inputHtml
+    const cacheHtml = readProcessingCache(inputHtml, "html");
+
+    if (cacheHtml) {
+        return cacheHtml;
+    }
+
+    let outputHtml = inputHtml
         // Deletes comments
         .replace(COMMENT_MATCHER, "")
         // Removes spaces at the beginning of the line.
@@ -44,7 +51,7 @@ module.exports = async function minifyHtml(inputHtml) {
 
     // Reformatting js.
     await new Promise((resolve, reject) => {
-        const scriptTags = [...minifiedHtml.match(SCRIPT_TAG_MATCHER) || []].filter(element => element != "");
+        const scriptTags = [...outputHtml.match(SCRIPT_TAG_MATCHER) || []].filter(element => element != "");
         let countTasks = 0;
         if (scriptTags.length == 0) {
             resolve();
@@ -52,12 +59,14 @@ module.exports = async function minifyHtml(inputHtml) {
         }
 
         scriptTags.map(scriptTag => new RegExp(SCRIPT_TAG_MATCHER).exec(scriptTag)).forEach(async ([fullMatch, balise, code]) => {
-            minifiedHtml = minifiedHtml.replace(fullMatch, `${balise}${await minifyJs(code || "")}</script>`);
+            outputHtml = outputHtml.replace(fullMatch, `${balise}${await minifyJs(code || "")}</script>`);
             if (++countTasks >= scriptTags.length) {
                 resolve();
             }
         });
     });
 
-    return minifiedHtml;
+    writeProcessingCache(inputHtml, outputHtml, "html");
+
+    return outputHtml;
 }
