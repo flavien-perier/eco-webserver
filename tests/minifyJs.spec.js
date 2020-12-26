@@ -1,6 +1,19 @@
-const minifyJs = require("../src/minifyJs");
+const fs = require("fs");
+const proxyquire = require("proxyquire").noPreserveCache();
+
+const TEST_CACHE = "./tests/test-cache";
+
+const mockConfiguration = {
+    "./configuration": { default: { cacheDir: TEST_CACHE }, "@global": true }
+};
+
+const minifyJs = proxyquire("../src/minifyJs", mockConfiguration);
 
 describe("minifyJs", () => {
+    afterEach(() => {
+        fs.rmdirSync(TEST_CACHE, { recursive: true });
+    });
+
     it("Minify pure js", async () => {
         const inputJs = `
             function test() {
@@ -44,5 +57,27 @@ describe("minifyJs", () => {
         const expectedJs = "class A{constructor(a,b){this.a=a,this.b=b}method(){this.a+=this.b}get a(){return this.a}}const a=new A;";
 
         expect(await minifyJs(inputJs)).toEqual(expectedJs);
+    });
+
+    it("Does not minify a badly formatted js file", async () => {
+        const inputJs = `
+            class A {
+                constructor(a, b) {
+                    this.a = a;
+                    this.b = b;
+                }
+
+                method() {
+                    this.a += this.b;
+                }
+
+                get a() {
+                    return this.a;
+                }
+
+            const a = new A();
+        `;
+
+        expect(await minifyJs(inputJs)).toEqual(inputJs);
     });
 });

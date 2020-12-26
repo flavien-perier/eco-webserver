@@ -1,6 +1,19 @@
-const minifyHtml = require("../src/minifyHtml");
+const fs = require("fs");
+const proxyquire = require("proxyquire").noPreserveCache();
+
+const TEST_CACHE = "./tests/test-cache";
+
+const mockConfiguration = {
+    "./configuration": { default: { cacheDir: TEST_CACHE }, "@global": true }
+};
+
+const minifyHtml = proxyquire("../src/minifyHtml", mockConfiguration);
 
 describe("minifyHtml", () => {
+    afterEach(() => {
+        fs.rmdirSync(TEST_CACHE, { recursive: true });
+    });
+
     it("Minify pure html", async () => {
         const inputHtml = `<html lang="fr">
             <!-- Test

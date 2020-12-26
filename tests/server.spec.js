@@ -1,11 +1,11 @@
-const supertest = require("supertest");
 const fs = require("fs");
 const http = require("http");
+const supertest = require("supertest");
 const proxyquire = require("proxyquire").noPreserveCache();
 
 const testTools = require("./testTools");
 
-const TEST_CACHE = ".tests/test-cache";
+const TEST_CACHE = "./tests/test-cache";
 
 describe("server", () => {
     describe("Simple configuration", () => {
@@ -30,12 +30,20 @@ describe("server", () => {
             }
         };
 
+        const mockRequire = {
+            "./minifyCss": proxyquire("../src/minifyCss", mockConfiguration),
+            "./minifyHtml": proxyquire("../src/minifyHtml", mockConfiguration),
+            "./minifyJs": proxyquire("../src/minifyJs", mockConfiguration),
+            "./minifyJson": proxyquire("../src/minifyJson", mockConfiguration),
+            ...mockConfiguration
+        };
+
         afterEach(() => {
             fs.rmdirSync(TEST_CACHE, { recursive: true });
         });
 
         it("Should display a page", done => {
-            supertest(proxyquire("../src/server", mockConfiguration)())
+            supertest(proxyquire("../src/server", mockRequire)())
                 .get("/")
                 .expect(200)
                 .expect("Content-Type", "text/html")
@@ -55,7 +63,7 @@ describe("server", () => {
         });
 
         it("Should display a page with a redirection", done => {
-            supertest(proxyquire("../src/server", mockConfiguration)())
+            supertest(proxyquire("../src/server", mockRequire)())
                 .get("/redirection")
                 .expect(200)
                 .expect("Content-Type", "text/html")
@@ -75,7 +83,7 @@ describe("server", () => {
         });
 
         it("Should display a page with a custom header", done => {
-            supertest(proxyquire("../src/server", mockConfiguration)())
+            supertest(proxyquire("../src/server", mockRequire)())
                 .get("/redirection")
                 .expect(200)
                 .expect("Content-Type", "text/html")
@@ -116,12 +124,20 @@ describe("server", () => {
             }
         };
 
+        const mockRequire = {
+            "./minifyCss": proxyquire("../src/minifyCss", mockConfiguration),
+            "./minifyHtml": proxyquire("../src/minifyHtml", mockConfiguration),
+            "./minifyJs": proxyquire("../src/minifyJs", mockConfiguration),
+            "./minifyJson": proxyquire("../src/minifyJson", mockConfiguration),
+            ...mockConfiguration
+        };
+
         afterEach(() => {
             fs.rmdirSync(TEST_CACHE, { recursive: true });
         });
 
         it("Should display a page with 404", done => {
-            supertest(proxyquire("../src/server", mockConfiguration)())
+            supertest(proxyquire("../src/server", mockRequire)())
                 .get("/redirection")
                 .expect(404)
                 .expect("Content-Type", "text/html")
@@ -143,6 +159,7 @@ describe("server", () => {
 
     describe("Configuration with cache", () => {
         const SANDBOX_DIR = "./tests/testDist/sandbox";
+
         const mockConfiguration = {
             "./configuration": {
                 default: {
@@ -160,6 +177,14 @@ describe("server", () => {
                 },
                 "@global": true
             }
+        };
+
+        const mockRequire = {
+            "./minifyCss": proxyquire("../src/minifyCss", mockConfiguration),
+            "./minifyHtml": proxyquire("../src/minifyHtml", mockConfiguration),
+            "./minifyJs": proxyquire("../src/minifyJs", mockConfiguration),
+            "./minifyJson": proxyquire("../src/minifyJson", mockConfiguration),
+            ...mockConfiguration
         };
 
         afterEach(() => {
@@ -185,7 +210,7 @@ describe("server", () => {
                     </body>
                 </html>`);
 
-            const server = proxyquire("../src/server", mockConfiguration)();
+            const server = proxyquire("../src/server", mockRequire)();
 
             supertest(server)
                 .get("/")
@@ -204,6 +229,7 @@ describe("server", () => {
                         </html>`);
 
                     fs.writeFileSync(SANDBOX_DIR + "/index.html", "");
+                    fs.rmdirSync(TEST_CACHE, { recursive: true });
 
                     supertest(server)
                         .get("/")
@@ -250,12 +276,20 @@ describe("server", () => {
             }
         };
 
+        const mockRequire = {
+            "./minifyCss": proxyquire("../src/minifyCss", mockConfiguration),
+            "./minifyHtml": proxyquire("../src/minifyHtml", mockConfiguration),
+            "./minifyJs": proxyquire("../src/minifyJs", mockConfiguration),
+            "./minifyJson": proxyquire("../src/minifyJson", mockConfiguration),
+            ...mockConfiguration
+        };
+
         afterEach(() => {
             fs.rmdirSync(TEST_CACHE, { recursive: true });
         });
 
         it("Should load JavaScript in the page", done => {
-            supertest(proxyquire("../src/server", mockConfiguration)())
+            supertest(proxyquire("../src/server", mockRequire)())
                 .get("/")
                 .expect(200)
                 .expect("Content-Type", "text/html")
@@ -305,11 +339,19 @@ describe("server", () => {
             }
         };
 
+        const mockRequire = {
+            "./minifyCss": proxyquire("../src/minifyCss", mockConfiguration),
+            "./minifyHtml": proxyquire("../src/minifyHtml", mockConfiguration),
+            "./minifyJs": proxyquire("../src/minifyJs", mockConfiguration),
+            "./minifyJson": proxyquire("../src/minifyJson", mockConfiguration),
+            ...mockConfiguration
+        };
+
         afterEach(() => {
             fs.rmdirSync(TEST_CACHE, { recursive: true });
         });
 
-        let server = http.createServer((req, res) => {
+        const server = http.createServer((req, res) => {
             console.log(req.url)
             if (req.url == "/path") {
                 res.writeHead(200);
@@ -330,7 +372,7 @@ describe("server", () => {
         });
 
         it("Should display a remote base path through the proxy", done => {
-            supertest(proxyquire("../src/server", mockConfiguration)())
+            supertest(proxyquire("../src/server", mockRequire)())
                 .get("/test")
                 .expect(200)
                 .expect("Content-Type", "text/html")
@@ -342,7 +384,7 @@ describe("server", () => {
         });
 
         it("Should display a remote resource through the proxy", done => {
-            supertest(proxyquire("../src/server", mockConfiguration)())
+            supertest(proxyquire("../src/server", mockRequire)())
                 .get("/test/path")
                 .expect(200)
                 .expect("Content-Type", "text/html")

@@ -19,12 +19,19 @@ module.exports = async function minifyJs(inputJs) {
         return cacheJs;
     }
 
-    const result = await minify(inputJs, { 
-        mangle: false,
-        compress: {
-            drop_console: true
-        }
-    });
+    let result;
+
+    try {
+        result = await minify(inputJs, { 
+            mangle: false,
+            compress: {
+                drop_console: true
+            }
+        });
+    } catch(err) {
+        result = { error: err };
+    }
+    
     let outputJs = "";
 
     if (result.error) {

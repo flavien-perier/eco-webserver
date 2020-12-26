@@ -1,6 +1,19 @@
-const minifyJson = require("../src/minifyJson");
+const fs = require("fs");
+const proxyquire = require("proxyquire").noPreserveCache();
+
+const TEST_CACHE = "./tests/test-cache";
+
+const mockConfiguration = {
+    "./configuration": { default: { cacheDir: TEST_CACHE }, "@global": true }
+};
+
+const minifyJson = proxyquire("../src/minifyJson", mockConfiguration);
 
 describe("minifyJson", () => {
+    afterEach(() => {
+        fs.rmdirSync(TEST_CACHE, { recursive: true });
+    });
+
     it("Minify json file", () => {
         const inputJson = `{
             "number": 3.22,
