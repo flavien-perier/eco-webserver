@@ -51,15 +51,7 @@ setInterval(() => {
  * Content of a cached resource.
  */
 class CacheValue {
-    /**
-     * Caching a local file.
-     *
-     * @param {string} filePath
-     * @param {string} requestUrl
-     * @param {string} fileContentType
-     * @returns {Promise<void>}
-     */
-    async localFile(filePath, requestUrl, fileContentType) {
+    constructor() {
         /**
          * @type {string | Buffer}
          */
@@ -70,7 +62,27 @@ class CacheValue {
          */
         this.dataType;
 
-        if (TXT_CONETENT_TYPE.indexOf(fileContentType) != -1) {
+        /**
+         * @type {number}
+         */
+        this.ttl;
+
+        /**
+         * @type {Buffer}
+         */
+        this.gzipData;
+    }
+
+    /**
+     * Caching a local file.
+     *
+     * @param {string} filePath
+     * @param {string} requestUrl
+     * @param {string} contentType
+     * @returns {Promise<void>}
+     */
+    async localFile(filePath, requestUrl, contentType) {
+        if (TXT_CONETENT_TYPE.indexOf(contentType) != -1) {
             this.data = readFileSync(join(configuration.distDir, filePath), "utf8");
             this.dataType = "txt";
         } else {
@@ -78,10 +90,10 @@ class CacheValue {
             this.dataType = "bin";
         }
 
-        if (fileContentType == configuration.contentType.html && configuration.enableIsomorphic)
+        if (contentType == configuration.contentType.html && configuration.enableIsomorphic)
             this.data = await evaluateHtmlFile(this.data, requestUrl);
 
-        switch(fileContentType) {
+        switch(contentType) {
             case configuration.contentType.html:
                 this.data = await minifyHtml(this.data);
                 break;
@@ -96,14 +108,7 @@ class CacheValue {
                 break;
         }
 
-        /**
-         * @type {number}
-         */
         this.ttl = 0;
-
-        /**
-         * @type {Buffer}
-         */
         this.gzipData = gzipData(this.data);
     }
 
@@ -111,9 +116,10 @@ class CacheValue {
      * Caching a remote file.
      *
      * @param {string} requestUrl
+     * @param {string} contentType
      * @returns {Promise<void>}
      */
-    proxyFile(requestUrl) {
+    proxyFile(requestUrl, contentType) {
         return new Promise((resolve, reject) => {
             const requestBaseUrl = Object.keys(configuration.proxy).filter(key => key === requestUrl.substr(0, key.length))[0];
             const proxyBaseUrl = configuration.proxy[requestBaseUrl];
@@ -141,14 +147,14 @@ class CacheValue {
 /**
  * Function allowing to make a pre-rendering of the java script on the backend side.
  *
- * @param {any} fileContent
+ * @param {string | Buffer} content
  * @param {string} requestUrl
  * @returns {Promise<string>}
  */
-function evaluateHtmlFile(fileContent, requestUrl) {
+function evaluateHtmlFile(content, requestUrl) {
     return new Promise((resolve, reject) => {
         // Declares a virtual DOM.
-        const dom = new jsdom.JSDOM(fileContent, {
+        const dom = new jsdom.JSDOM(content, {
             url: `http://127.0.0.1:${configuration.port}${requestUrl}`,
             referrer: `http://127.0.0.1:${configuration.port}${requestUrl}`,
             contentType: "text/html",
@@ -264,11 +270,11 @@ function buildHeader(contentType, useGzip) {
  *
  * @param {string} filePath
  * @param {string} requestUrl
- * @param {string} fileContentType
+ * @param {string} contentType
  * @param {boolean} useGzip
  * @returns {Promise<string | Buffer>}
  */
-async function readFile(filePath, requestUrl, fileContentType, useGzip) {
+async function readFile(filePath, requestUrl, contentType, useGzip) {
     /**
      * @type {CacheValue}
      */
@@ -278,7 +284,7 @@ async function readFile(filePath, requestUrl, fileContentType, useGzip) {
         cacheValue.ttl++;
     } else {
         cacheValue = new CacheValue();
-        await cacheValue.localFile(filePath, requestUrl, fileContentType);
+        await cacheValue.localFile(filePath, requestUrl, contentType);
         cache.set(requestUrl, cacheValue);
     }
 
@@ -289,17 +295,18 @@ async function readFile(filePath, requestUrl, fileContentType, useGzip) {
  * Retrieves the content of a remote resource.
  *
  * @param {string} requestUrl
+ * @param {string} contentType
  * @param {boolean} useGzip
  * @returns {Promise<Buffer | string>}
  */
-async function readProxy(requestUrl, useGzip) {
+async function readProxy(requestUrl, contentType, useGzip) {
     let cacheValue;
     if (cache.has(requestUrl)) {
         cacheValue = cache.get(requestUrl);
         cacheValue.ttl++;
     } else {
         cacheValue = new CacheValue();
-        await cacheValue.proxyFile(requestUrl);
+        await cacheValue.proxyFile(requestUrl, contentType);
         cache.set(requestUrl, cacheValue);
     }
 
@@ -330,28 +337,34 @@ module.exports = () => {
         const fileUrl = join(configuration.distDir, req.url);
         const useGzip = (req.headers["accept-encoding"] || "").indexOf("gzip") != -1;
 
+        /**
+         * @type {string | Buffer}
+         */
+        let content;
+
         try {
             if (Object.keys(configuration.proxy).some(url => url === req.url.substr(0, url.length))) {
                 const contentType = getContentType(req.url);
+                content = await readProxy(req.url, contentType, useGzip);
                 res.writeHead(200, buildHeader(contentType, useGzip));
-                res.write(await readProxy(req.url, useGzip));
             } else if (existsSync(fileUrl) && lstatSync(fileUrl).isFile()) {
                 const contentType = getContentType(req.url);
+                content = await readFile(req.url, req.url, contentType, useGzip);
                 res.writeHead(200, buildHeader(contentType, useGzip));
-                res.write(await readFile(req.url, req.url, contentType, useGzip));
             } else if (configuration.use404File) {
+                content = await readFile("404.html", req.url, configuration.contentType.html, useGzip);
                 res.writeHead(404, "Not found", buildHeader(configuration.contentType.html, useGzip));
-                res.write(await readFile("404.html", req.url, configuration.contentType.html, useGzip));
             } else {
+                content = await readFile("index.html", req.url, configuration.contentType.html, useGzip);
                 res.writeHead(200, buildHeader(configuration.contentType.html, useGzip));
-                res.write(await readFile("index.html", req.url, configuration.contentType.html, useGzip));
             }
         } catch(err) {
             logger.error(`Internal server error: ${err.text}`, err);
+            content = "";
             res.writeHead(500, "Internal server error", buildHeader(configuration.contentType.html, false));
-            res.write("");
         }
 
+        res.write(content);
         res.end();
     });
 }
