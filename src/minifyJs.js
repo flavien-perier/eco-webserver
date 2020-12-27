@@ -16,7 +16,7 @@ module.exports = async function minifyJs(inputJs) {
     const cacheJs = readProcessingCache(inputJs, "js");
 
     if (cacheJs) {
-        return cacheJs;
+        return cacheJs.toString();
     }
 
     let result;

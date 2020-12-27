@@ -23,8 +23,7 @@ describe("server", () => {
                     },
                     contentType: {"html": "text/html", "css": "text/css", "js": "application/javascript", "json": "application/json"},
                     proxy : {},
-                    use404File: false,
-                    use500File: false
+                    use404File: false
                 },
                 "@global": true
             }
@@ -109,8 +108,7 @@ describe("server", () => {
                     header: {},
                     contentType: {"html": "text/html", "css": "text/css", "js": "application/javascript", "json": "application/json"},
                     proxy : {},
-                    use404File: true,
-                    use500File: false
+                    use404File: true
                 },
                 "@global": true
             }
@@ -156,8 +154,7 @@ describe("server", () => {
                     header: {},
                     contentType: {"html": "text/html", "css": "text/css", "js": "application/javascript", "json": "application/json"},
                     proxy : {},
-                    use404File: false,
-                    use500File: false
+                    use404File: false
                 },
                 "@global": true
             }
@@ -245,8 +242,7 @@ describe("server", () => {
                     },
                     contentType: {"html": "text/html", "css": "text/css", "js": "application/javascript", "json": "application/json"},
                     proxy : {},
-                    use404File: false,
-                    use500File: false
+                    use404File: false
                 },
                 "@global": true
             }
@@ -300,8 +296,7 @@ describe("server", () => {
                     proxy : {
                         "/test": `http://127.0.0.1:${TEST_PORT}`
                     },
-                    use404File: false,
-                    use500File: false
+                    use404File: false
                 },
                 "@global": true
             }

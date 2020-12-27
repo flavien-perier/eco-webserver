@@ -4,7 +4,9 @@
 
 # eco-webserver
 
-Eco-webserver is a simple static file server.
+The objective of eco-webserver is to propose a nodejs server able to reduce the network footprint of a static site or a single page application (SPA).
+
+To do so, the server uses different strategies depending on the types of files it hosts.
 
 ## Features
 
@@ -16,6 +18,9 @@ Eco-webserver is a simple static file server.
 - [X] Include css minifiers
 - [X] Include json minifiers
 - [X] Include js minifiers with [terser](https://www.npmjs.com/package/terser)
+- [ ] Optimize images and convert them to webp
+- [ ] Optimize svg path
+- [ ] Optimize fonts and convert them to woff2
 
 ## Usage
 
@@ -25,7 +30,7 @@ Eco-webserver is a simple static file server.
 npm install -g eco-webserver
 ```
 
-### Command line usage
+### Command line
 
 ```sh
 cd project
@@ -81,7 +86,7 @@ For PaaS or Docker platform users, it is possible to inject configuration throug
 
 ### File organisation
 
-If a client queries an unknown URL, the server will automatically redirect the request to the `index.html` file. If the server has a `404.html` file, the server will redirect its requests to this file. In the same way, it is also possible to create a `500.html` file which will be called in case of an error on the server.
+If a client queries an unknown URL, the server will automatically redirect the request to the `index.html` file. If the server has a `404.html` file, the server will redirect its requests to this file.
 
 ## How the cache works ?
 

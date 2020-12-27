@@ -19,7 +19,7 @@ module.exports = function minifyCss(inputCss) {
     const cacheCss = readProcessingCache(inputCss, "css");
 
     if (cacheCss) {
-        return cacheCss;
+        return cacheCss.toString();
     }
 
     const outputCss = inputCss

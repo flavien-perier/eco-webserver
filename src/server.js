@@ -60,6 +60,16 @@ class CacheValue {
      * @returns {Promise<void>}
      */
     async localFile(filePath, requestUrl, fileContentType) {
+        /**
+         * @type {string | Buffer}
+         */
+        this.data;
+
+        /**
+         * @type {"txt" | "bin"}
+         */
+        this.dataType;
+
         if (TXT_CONETENT_TYPE.indexOf(fileContentType) != -1) {
             this.data = readFileSync(join(configuration.distDir, filePath), "utf8");
             this.dataType = "txt";
@@ -86,7 +96,14 @@ class CacheValue {
                 break;
         }
 
+        /**
+         * @type {number}
+         */
         this.ttl = 0;
+
+        /**
+         * @type {Buffer}
+         */
         this.gzipData = gzipData(this.data);
     }
 
@@ -126,7 +143,7 @@ class CacheValue {
  *
  * @param {any} fileContent
  * @param {string} requestUrl
- * @returns {Promise<any>}
+ * @returns {Promise<string>}
  */
 function evaluateHtmlFile(fileContent, requestUrl) {
     return new Promise((resolve, reject) => {
@@ -204,7 +221,7 @@ function evaluateHtmlFile(fileContent, requestUrl) {
  * Gives the "content-type" of a resource according to its extension.
  *
  * @param {string} filePath
- * @returns {any}
+ * @returns {string}
  */
 function getContentType(filePath) {
     const parsing = /\.([a-zA-Z0-9]+)$/.exec(filePath);
@@ -227,7 +244,7 @@ function getContentType(filePath) {
  *
  * @param {string} contentType
  * @param {boolean} useGzip
- * @returns {any}
+ * @returns {{[string]: string}}
  */
 function buildHeader(contentType, useGzip) {
     const header = {
@@ -249,9 +266,12 @@ function buildHeader(contentType, useGzip) {
  * @param {string} requestUrl
  * @param {string} fileContentType
  * @param {boolean} useGzip
- * @returns {Promise<any>}
+ * @returns {Promise<string | Buffer>}
  */
 async function readFile(filePath, requestUrl, fileContentType, useGzip) {
+    /**
+     * @type {CacheValue}
+     */
     let cacheValue;
     if (cache.has(requestUrl)) {
         cacheValue = cache.get(requestUrl);
@@ -270,7 +290,7 @@ async function readFile(filePath, requestUrl, fileContentType, useGzip) {
  *
  * @param {string} requestUrl
  * @param {boolean} useGzip
- * @returns {Promise<any>}
+ * @returns {Promise<Buffer | string>}
  */
 async function readProxy(requestUrl, useGzip) {
     let cacheValue;
@@ -328,10 +348,8 @@ module.exports = () => {
             }
         } catch(err) {
             logger.error(`Internal server error: ${err.text}`, err);
-            res.writeHead(500, "Internal server error", buildHeader(configuration.contentType.html, useGzip));
-            if (configuration.use500File) {
-                res.write(await readFile("500.html", req.url, configuration.contentType.html, useGzip));
-            }
+            res.writeHead(500, "Internal server error", buildHeader(configuration.contentType.html, false));
+            res.write("");
         }
 
         res.end();

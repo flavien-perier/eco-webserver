@@ -23,7 +23,7 @@ module.exports = async function minifyHtml(inputHtml) {
     const cacheHtml = readProcessingCache(inputHtml, "html");
 
     if (cacheHtml) {
-        return cacheHtml;
+        return cacheHtml.toString();
     }
 
     let outputHtml = inputHtml

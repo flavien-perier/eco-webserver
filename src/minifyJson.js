@@ -14,7 +14,7 @@ module.exports = function minifyJs(inputJson) {
     const cacheJson = readProcessingCache(inputJson, "json");
 
     if (cacheJson) {
-        return cacheJson;
+        return cacheJson.toString();
     }
 
     let outputJson = "";

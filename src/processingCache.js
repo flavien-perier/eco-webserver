@@ -9,10 +9,10 @@ const configuration = require("./configuration").default;
 /**
  * Pushes a treatment into the cache.
  *
- * @param {string} beforeProcessing
- * @param {string} afterProcessing
+ * @param {string | Buffer} beforeProcessing
+ * @param {string | Buffer} afterProcessing
  * @param {string} fileFormat
- * @returns {Promise<null>}
+ * @returns {void}
  */
 async function writeProcessingCache(beforeProcessing, afterProcessing, fileFormat) {
     const cacheName = makeCacheName(beforeProcessing, fileFormat);
@@ -27,9 +27,9 @@ async function writeProcessingCache(beforeProcessing, afterProcessing, fileForma
 /**
  * Recovers a cache treatment.
  *
- * @param {string} beforeProcessing
+ * @param {string | Buffer} beforeProcessing
  * @param {string} fileFormat
- * @returns {string | null}
+ * @returns {Buffer | null}
  */
 function readProcessingCache(beforeProcessing, fileFormat) {
     const cacheName = makeCacheName(beforeProcessing, fileFormat);
@@ -38,13 +38,13 @@ function readProcessingCache(beforeProcessing, fileFormat) {
         return null;
     }
 
-    return readFileSync(cacheName).toString();
+    return readFileSync(cacheName);
 }
 
 /**
  * Gives the name of the cached file.
  *
- * @param {string} beforeProcessing
+ * @param {string | Buffer} beforeProcessing
  * @param {string} fileFormat
  * @returns {string}
  */

@@ -14,7 +14,7 @@ describe("processingCache", () => {
         fs.rmdirSync(TEST_CACHE, { recursive: true });
     });
 
-    it("Cache a process and recover the value", async () => {
+    it("Cache a process and recover the value", () => {
         const inputProcess = "File content";
 
         const outputProcess = "Result after work";
@@ -23,9 +23,9 @@ describe("processingCache", () => {
         expect(processingCache.readProcessingCache(inputProcess, "js")).toBeNull();
 
         // Put the data in the cache
-        await processingCache.writeProcessingCache(inputProcess, outputProcess, "js");
+        processingCache.writeProcessingCache(inputProcess, outputProcess, "js");
 
         // Retrieve the data
-        expect(processingCache.readProcessingCache(inputProcess, "js")).toEqual(outputProcess);
+        expect(processingCache.readProcessingCache(inputProcess, "js").toString()).toEqual(outputProcess);
     });
 });
