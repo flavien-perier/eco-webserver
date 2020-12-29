@@ -31,7 +31,7 @@ describe("minifyHtml", () => {
             <!-- Test
                 comment -->
             <p id="id1" class="class1 class2">test< / p><br class = ""/ >
-            <style>
+            <style type="text/css">
                 a:hover {
                     border-radius : 1px;
                     border: 1px solid #000;
@@ -55,7 +55,7 @@ describe("minifyHtml", () => {
             <!-- Test
                 comment -->
             <p id="id1" class="class1 class2">test< / p><br class = ""/ >
-            <script>
+            <script type="text/javascript" charset="utf-8" async>
                 function test() {
                     if ( yes === 3 ) {
                         return {
@@ -72,7 +72,7 @@ describe("minifyHtml", () => {
         < / html>`;
 
         const expectedHtml = "<html lang=fr><p id=id1 class=\"class1 class2\">test</p><br/>"
-            + "<script>function test(){if(3===yes)return{a:4,b:\"test\",c:[4,5,\"(a == 3)\"]}}</script></html>";
+            + "<script async>function test(){if(3===yes)return{a:4,b:\"test\",c:[4,5,\"(a == 3)\"]}}</script></html>";
 
         expect(await minifyHtml(inputHtml)).toEqual(expectedHtml);
     });

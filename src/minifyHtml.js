@@ -6,12 +6,19 @@ const { writeProcessingCache, readProcessingCache } = require("./processingCache
 
 const COMMENT_MATCHER = /<!--.*?-->/gs;
 const BEGINNING_SAPCE_MATCHER = /^\s*/gm;
-const OPENING_TAG_MATCHER = /<([\w\d-_]+)((?:\s+[\w\d-_]+\s*=\s*(?:["'].*?["']|[^ >]*))*)\s*?(\/)?\s*?>/sg;
-const KEY_VALUE_MATCHER = /([\w\d-_]+) *= *(["'].*?["']|\S*)/sg;
+const OPENING_TAG_MATCHER = /<([\w\d-_]+)((?:\s+[\w\d-_]+(?:\s*=\s*(?:["'].*?["']|[^ >]*))?)*)\s*?(\/)?\s*?>/sg;
+const KEY_VALUE_MATCHER = /([\w\d-_]+)(?: *= *(["'].*?["']|\S*))?/sg;
 const CLOSING_TAG_MATCHER = /<\s*\/\s*([\w\d-_]+)>/sg;
 const BLANK_SPACE_BETWEEN_TAGS_MATCHER = />\s+</sg;
 const STYLE_TAG_MATCHER = /(<style.*?>)(.*?)<\/style>/sg;
 const SCRIPT_TAG_MATCHER = /(<script.*?>)(.*?)<\/script>/sg;
+
+const DELETED_PARAMETERS = [
+    "script:type",
+    "script:charset",
+    "style:type",
+    "style:charset"
+];
 
 /**
  * Reforms a HTML page.
@@ -36,7 +43,9 @@ module.exports = async function minifyHtml(inputHtml) {
             // Reformatting tags parameters.
             const parametersList = [];
             parameters.replace(KEY_VALUE_MATCHER, (_, key, value) => {
-                if (value == "\"\"" || value == "''" || value == "") {}
+                if (value == null) parametersList.push(key);
+                else if (value == "\"\"" || value == "''" || value == "") {}
+                else if (DELETED_PARAMETERS.indexOf(`${baliseName}:${key}`) != -1) {}
                 else if (value.search(" ") == -1 && value.search("=") == -1) parametersList.push(`${key}=${value.replace(/["`]/sg, "")}`);
                 else parametersList.push(`${key}=${value}`);
             });
