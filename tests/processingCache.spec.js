@@ -15,17 +15,16 @@ describe("processingCache", () => {
     });
 
     it("Cache a process and recover the value", () => {
-        const inputProcess = "File content";
-
-        const outputProcess = "Result after work";
+        const afterProcessing = "Result after work";
+        const hash = "processingCacheHash";
 
         // Test if the data is in the cache
-        expect(processingCache.readProcessingCache(inputProcess, "js")).toBeNull();
+        expect(processingCache.readProcessingCache(hash, "js")).toBeNull();
 
         // Put the data in the cache
-        processingCache.writeProcessingCache(inputProcess, outputProcess, "js");
+        processingCache.writeProcessingCache(afterProcessing, hash, "js");
 
         // Retrieve the data
-        expect(processingCache.readProcessingCache(inputProcess, "js").toString()).toEqual(outputProcess);
+        expect(processingCache.readProcessingCache(hash, "js").toString()).toEqual(afterProcessing);
     });
 });

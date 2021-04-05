@@ -24,10 +24,11 @@ const DELETED_PARAMETERS = [
  * Reforms a HTML page.
  *
  * @param {string} inputHtml
+ * @param {string} hash
  * @returns {Promise<string>}
  */
-module.exports = async function minifyHtml(inputHtml) {
-    const cacheHtml = readProcessingCache(inputHtml, "html");
+module.exports = async function minifyHtml(inputHtml, hash) {
+    const cacheHtml = readProcessingCache(hash, "html");
 
     if (cacheHtml) {
         return cacheHtml.toString();
@@ -75,7 +76,7 @@ module.exports = async function minifyHtml(inputHtml) {
         });
     });
 
-    writeProcessingCache(inputHtml, outputHtml, "html");
+    writeProcessingCache(outputHtml, hash, "html");
 
     return outputHtml;
 }

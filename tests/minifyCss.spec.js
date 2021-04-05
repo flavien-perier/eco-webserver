@@ -24,9 +24,11 @@ describe("minifyCss", () => {
             background-color : blue;
         }`;
 
+        const fileHash = "cssHash1";
+
         const expectedCss = "a:hover{border-radius:1px;border:1px solid #000}.test{background-color:blue}";
 
-        expect(minifyCss(inputCss)).toEqual(expectedCss);
+        expect(minifyCss(inputCss, fileHash)).toEqual(expectedCss);
     });
 
     it("Test cache", () => {
@@ -40,16 +42,19 @@ describe("minifyCss", () => {
             background-color : blue;
         }`;
 
+        const fileHash = "cssHash2";
+
         const expectedCss = "a:hover{border-radius:1px;border:1px solid #000}.test{background-color:blue}";
 
         // Processing
-        expect(minifyCss(inputCss)).toEqual(expectedCss);
+        expect(minifyCss(inputCss, fileHash)).toEqual(expectedCss);
 
         // Cache
-        expect(minifyCss(inputCss)).toEqual(expectedCss);
+        expect(minifyCss(inputCss, fileHash)).toEqual(expectedCss);
 
         // Modify cache file and read it
-        fs.writeFileSync(TEST_CACHE + "/731400dad826f8a79e48f0691df4e34ad97c238f0f980636ad786d7977237ffd.css", "test");
-        expect(minifyCss(inputCss)).toEqual("test");
+        
+        fs.writeFileSync(`${TEST_CACHE}/${fileHash}.css`, "test");
+        expect(minifyCss(inputCss, fileHash)).toEqual("test");
     });
 });

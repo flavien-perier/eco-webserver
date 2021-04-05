@@ -10,10 +10,11 @@ const logger = new Logger();
  * Reforms a JavaScript code.
  *
  * @param {string} inputJs
+ * @param {string} hash
  * @returns {Promise<string>}
  */
-module.exports = async function minifyJs(inputJs) {
-    const cacheJs = readProcessingCache(inputJs, "js");
+module.exports = async function minifyJs(inputJs, hash) {
+    const cacheJs = readProcessingCache(hash, "js");
 
     if (cacheJs) {
         return cacheJs.toString();
@@ -41,7 +42,7 @@ module.exports = async function minifyJs(inputJs) {
         outputJs = result.code;
     }
 
-    writeProcessingCache(inputJs, outputJs, "js");
+    writeProcessingCache(outputJs, hash, "js");
 
     return outputJs;
 }

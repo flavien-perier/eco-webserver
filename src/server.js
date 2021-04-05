@@ -93,18 +93,20 @@ class CacheValue {
         if (contentType == configuration.contentType.html && configuration.enableIsomorphic)
             this.data = await evaluateHtmlFile(this.data, requestUrl);
 
+        const contentHash = createHash("sha256").update(this.data || "").digest("hex");
+
         switch(contentType) {
             case configuration.contentType.html:
-                this.data = await minifyHtml(this.data);
+                this.data = await minifyHtml(this.data, contentHash);
                 break;
             case configuration.contentType.css:
-                this.data = minifyCss(this.data);
+                this.data = minifyCss(this.data, contentHash);
                 break;
             case configuration.contentType.js:
-                this.data = await minifyJs(this.data);
+                this.data = await minifyJs(this.data, contentHash);
                 break;
             case configuration.contentType.json:
-                this.data = minifyJson(this.data);
+                this.data = minifyJson(this.data, contentHash);
                 break;
         }
 

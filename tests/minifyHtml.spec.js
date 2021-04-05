@@ -21,9 +21,11 @@ describe("minifyHtml", () => {
             <p id="id1" class="class1 class2" param="key=value">test< / p><br class = ""/ >
         < / html>`;
 
+        const fileHash = "htmlHash1";
+
         const expectedHtml = "<html lang=fr><p id=id1 class=\"class1 class2\" param=\"key=value\">test</p><br/></html>";
 
-        expect(await minifyHtml(inputHtml)).toEqual(expectedHtml);
+        expect(await minifyHtml(inputHtml, fileHash)).toEqual(expectedHtml);
     });
 
     it("Minify html with css", async () => {
@@ -44,10 +46,12 @@ describe("minifyHtml", () => {
             </style>
         < / html>`;
 
+        const fileHash = "htmlHash2";
+
         const expectedHtml = "<html lang=fr><p id=id1 class=\"class1 class2\">test</p><br/>"
             + "<style>a:hover{border-radius:1px;border:1px solid #000}.test{background-color:blue}</style></html>";
 
-        expect(await minifyHtml(inputHtml)).toEqual(expectedHtml);
+        expect(await minifyHtml(inputHtml, fileHash)).toEqual(expectedHtml);
     });
 
     it("Minify html with js", async () => {
@@ -71,10 +75,12 @@ describe("minifyHtml", () => {
             </script>
         < / html>`;
 
+        const fileHash = "htmlHash3";
+
         const expectedHtml = "<html lang=fr><p id=id1 class=\"class1 class2\">test</p><br/>"
             + "<script async>function test(){if(3===yes)return{a:4,b:\"test\",c:[4,5,\"(a == 3)\"]}}</script></html>";
 
-        expect(await minifyHtml(inputHtml)).toEqual(expectedHtml);
+        expect(await minifyHtml(inputHtml, fileHash)).toEqual(expectedHtml);
     });
 
     it("Test cache", async () => {
@@ -84,16 +90,18 @@ describe("minifyHtml", () => {
             <p id="id1" class="class1 class2" param="key=value">test< / p><br class = ""/ >
         < / html>`;
 
+        const fileHash = "htmlHash4";
+
         const expectedHtml = "<html lang=fr><p id=id1 class=\"class1 class2\" param=\"key=value\">test</p><br/></html>";
 
         // Processing
-        expect(await minifyHtml(inputHtml)).toEqual(expectedHtml);
+        expect(await minifyHtml(inputHtml, fileHash)).toEqual(expectedHtml);
 
         // Cache
-        expect(await minifyHtml(inputHtml)).toEqual(expectedHtml);
+        expect(await minifyHtml(inputHtml, fileHash)).toEqual(expectedHtml);
 
         // Modify cache file and read it
-        fs.writeFileSync(TEST_CACHE + "/f837f253107bf544137890cba56cd6e0a6abd3af1ce37c2cb448bea54a149efa.html", "test");
-        expect(await minifyHtml(inputHtml)).toEqual("test");
+        fs.writeFileSync(`${TEST_CACHE}/${fileHash}.html`, "test");
+        expect(await minifyHtml(inputHtml, fileHash)).toEqual("test");
     });
 });

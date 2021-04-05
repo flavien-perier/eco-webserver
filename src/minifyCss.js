@@ -13,10 +13,11 @@ const CLOSING_BRACES_MATCHER = /;?\s*}\s*/gm;
  * Reforms a CSS style page.
  *
  * @param {string} inputCss
+ * @param {string} hash
  * @returns {string}
  */
-module.exports = function minifyCss(inputCss) {
-    const cacheCss = readProcessingCache(inputCss, "css");
+module.exports = function minifyCss(inputCss, hash) {
+    const cacheCss = readProcessingCache(hash, "css");
 
     if (cacheCss) {
         return cacheCss.toString();
@@ -36,7 +37,7 @@ module.exports = function minifyCss(inputCss) {
         // Closing braces.
         .replace(CLOSING_BRACES_MATCHER, "}");
 
-    writeProcessingCache(inputCss, outputCss, "css");
+    writeProcessingCache(outputCss, hash, "css");
     
     return outputCss;
 }

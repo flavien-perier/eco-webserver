@@ -8,10 +8,11 @@ const logger = new Logger();
  * Reforms a json file.
  *
  * @param {string} inputJson
+ * @param {string} hash
  * @returns {string}
  */
-module.exports = function minifyJs(inputJson) {
-    const cacheJson = readProcessingCache(inputJson, "json");
+module.exports = function minifyJs(inputJson, hash) {
+    const cacheJson = readProcessingCache(hash, "json");
 
     if (cacheJson) {
         return cacheJson.toString();
@@ -26,7 +27,7 @@ module.exports = function minifyJs(inputJson) {
         outputJson = inputJson;
     }
 
-    writeProcessingCache(inputJson, outputJson, "json");
+    writeProcessingCache(outputJson, hash, "json");
 
     return outputJson;
 }

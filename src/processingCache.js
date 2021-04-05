@@ -1,7 +1,6 @@
 "use strict";
 
 const { existsSync, readFileSync, writeFileSync, mkdirSync } = require("fs");
-const { createHash } = require("crypto");
 const { join } = require("path");
 
 const configuration = require("./configuration").default;
@@ -9,49 +8,46 @@ const configuration = require("./configuration").default;
 /**
  * Pushes a treatment into the cache.
  *
- * @param {string | Buffer} beforeProcessing
  * @param {string | Buffer} afterProcessing
  * @param {string} fileFormat
  * @returns {void}
  */
-async function writeProcessingCache(beforeProcessing, afterProcessing, fileFormat) {
-    const cacheName = makeCacheName(beforeProcessing, fileFormat);
+async function writeProcessingCache(afterProcessing, hash, fileFormat) {
+    const cacheLocation = fileCacheDir(hash, fileFormat);
 
     if (!existsSync(configuration.cacheDir)) {
         mkdirSync(configuration.cacheDir, { recursive: true });
     }
 
-    writeFileSync(cacheName, afterProcessing);
+    writeFileSync(cacheLocation, afterProcessing);
 }
 
 /**
  * Recovers a cache treatment.
  *
- * @param {string | Buffer} beforeProcessing
+ * @param {string} fileFormat
  * @param {string} fileFormat
  * @returns {Buffer | null}
  */
-function readProcessingCache(beforeProcessing, fileFormat) {
-    const cacheName = makeCacheName(beforeProcessing, fileFormat);
+function readProcessingCache(hash, fileFormat) {
+    const cacheLocation = fileCacheDir(hash, fileFormat);
 
-    if (!existsSync(cacheName)) {
+    if (!existsSync(cacheLocation)) {
         return null;
     }
 
-    return readFileSync(cacheName);
+    return readFileSync(cacheLocation);
 }
 
 /**
- * Gives the name of the cached file.
+ * Gives the location of the cached file.
  *
  * @param {string | Buffer} beforeProcessing
  * @param {string} fileFormat
  * @returns {string}
  */
-function makeCacheName(beforeProcessing, fileFormat) {
-    const baseName = createHash("sha256").update(beforeProcessing || "").digest("hex");
-
-    return join(configuration.cacheDir, `${baseName}.${fileFormat}`);
+ function fileCacheDir(hash, fileFormat) {
+    return join(configuration.cacheDir, `${hash}.${fileFormat}`);
 }
 
 module.exports = {
