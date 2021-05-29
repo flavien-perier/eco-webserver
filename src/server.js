@@ -71,6 +71,11 @@ class CacheValue {
          * @type {Buffer}
          */
         this.gzipData;
+
+        /**
+         * @type {String}
+         */
+        this.hash;
     }
 
     /**
@@ -93,20 +98,20 @@ class CacheValue {
         if (contentType == configuration.contentType.html && configuration.enableIsomorphic)
             this.data = await evaluateHtmlFile(this.data, requestUrl);
 
-        const contentHash = createHash("sha256").update(this.data || "").digest("hex");
+        this.hash = createHash("sha256").update(this.data || "").digest("hex");
 
         switch(contentType) {
             case configuration.contentType.html:
-                this.data = await minifyHtml(this.data, contentHash);
+                this.data = await minifyHtml(this.data, this.hash);
                 break;
             case configuration.contentType.css:
-                this.data = minifyCss(this.data, contentHash);
+                this.data = minifyCss(this.data, this.hash);
                 break;
             case configuration.contentType.js:
-                this.data = await minifyJs(this.data, contentHash);
+                this.data = await minifyJs(this.data, this.hash);
                 break;
             case configuration.contentType.json:
-                this.data = minifyJson(this.data, contentHash);
+                this.data = minifyJson(this.data, this.hash);
                 break;
         }
 
@@ -118,10 +123,9 @@ class CacheValue {
      * Caching a remote file.
      *
      * @param {string} requestUrl
-     * @param {string} contentType
      * @returns {Promise<void>}
      */
-    proxyFile(requestUrl, contentType) {
+    proxyFile(requestUrl) {
         return new Promise((resolve, reject) => {
             const requestBaseUrl = Object.keys(configuration.proxy).filter(key => key === requestUrl.substr(0, key.length))[0];
             const proxyBaseUrl = configuration.proxy[requestBaseUrl];
@@ -136,6 +140,7 @@ class CacheValue {
                 }).on("end", () => {
                     this.data = buffer;
                     this.gzipData = gzipData(this.data);
+                    this.hash = createHash("sha256").update(this.data || "").digest("hex");
                     resolve();
                 });
             });
@@ -198,7 +203,8 @@ function evaluateHtmlFile(content, requestUrl) {
                             });
                         });
                     } else {
-                        executeScript(new Script(await readFile(scriptSrc, scriptSrc, configuration.contentType.js, false)));
+                        const cacheValue = await readFile(scriptSrc, scriptSrc, configuration.contentType.js);
+                        executeScript(new Script(cacheValue.data));
                     }
                 } else {
                     executeScript(new Script(script.innerHTML));
@@ -252,16 +258,21 @@ function getContentType(filePath) {
  *
  * @param {string} contentType
  * @param {boolean} useGzip
+ * @param {string} etag
  * @returns {{[string]: string}}
  */
-function buildHeader(contentType, useGzip) {
+function buildHeader(contentType, useGzip, etag) {
     const header = {
+        ...configuration.header,
         "Content-Type": contentType,
-        ...configuration.header
     };
 
     if (useGzip) {
         header["Content-Encoding"] = "gzip";
+    }
+
+    if (etag) {
+        header["ETag"] = etag;
     }
 
     return header;
@@ -273,14 +284,14 @@ function buildHeader(contentType, useGzip) {
  * @param {string} filePath
  * @param {string} requestUrl
  * @param {string} contentType
- * @param {boolean} useGzip
- * @returns {Promise<string | Buffer>}
+ * @returns {Promise<CacheValue>}
  */
-async function readFile(filePath, requestUrl, contentType, useGzip) {
+async function readFile(filePath, requestUrl, contentType) {
     /**
      * @type {CacheValue}
      */
     let cacheValue;
+
     if (cache.has(requestUrl)) {
         cacheValue = cache.get(requestUrl);
         cacheValue.ttl++;
@@ -290,29 +301,31 @@ async function readFile(filePath, requestUrl, contentType, useGzip) {
         cache.set(requestUrl, cacheValue);
     }
 
-    return useGzip ? cacheValue.gzipData : cacheValue.data;
+    return cacheValue;
 }
 
 /**
  * Retrieves the content of a remote resource.
  *
  * @param {string} requestUrl
- * @param {string} contentType
- * @param {boolean} useGzip
- * @returns {Promise<Buffer | string>}
+ * @returns {Promise<CacheValue>}
  */
-async function readProxy(requestUrl, contentType, useGzip) {
+async function readProxy(requestUrl) {
+    /**
+     * @type {CacheValue}
+     */
     let cacheValue;
+
     if (cache.has(requestUrl)) {
         cacheValue = cache.get(requestUrl);
         cacheValue.ttl++;
     } else {
         cacheValue = new CacheValue();
-        await cacheValue.proxyFile(requestUrl, contentType);
+        await cacheValue.proxyFile(requestUrl);
         cache.set(requestUrl, cacheValue);
     }
 
-    return useGzip ? cacheValue.gzipData : cacheValue.data;
+    return cacheValue;
 }
 
 /**
@@ -339,34 +352,60 @@ module.exports = () => {
         const fileUrl = join(configuration.distDir, req.url);
         const useGzip = (req.headers["accept-encoding"] || "").indexOf("gzip") != -1;
 
-        /**
-         * @type {string | Buffer}
-         */
-        let content;
-
         try {
+            /**
+             * @type {number}
+             */
+            let statusCode = 200;
+
+            /**
+             * @type {string}
+             */
+            let statusMessage = "";
+
+            /**
+             * @type {Object}
+             */
+            let header;
+
+            /**
+             * @type {CacheValue}
+             */
+            let content;
+
             if (Object.keys(configuration.proxy).some(url => url === req.url.substr(0, url.length))) {
                 const contentType = getContentType(req.url);
-                content = await readProxy(req.url, contentType, useGzip);
-                res.writeHead(200, buildHeader(contentType, useGzip));
+                content = await readProxy(req.url, useGzip);
+                header = buildHeader(contentType, useGzip, content.hash);
             } else if (existsSync(fileUrl) && lstatSync(fileUrl).isFile()) {
                 const contentType = getContentType(req.url);
-                content = await readFile(req.url, req.url, contentType, useGzip);
-                res.writeHead(200, buildHeader(contentType, useGzip));
+                content = await readFile(req.url, req.url, contentType);
+                header = buildHeader(contentType, useGzip, content.hash);
             } else if (configuration.use404File) {
-                content = await readFile("404.html", req.url, configuration.contentType.html, useGzip);
-                res.writeHead(404, "Not found", buildHeader(configuration.contentType.html, useGzip));
+                content = await readFile("404.html", req.url, configuration.contentType.html);
+                statusCode = 404;
+                statusMessage = "Not found";
+                header = buildHeader(configuration.contentType.html, useGzip, content.hash);
             } else {
-                content = await readFile("index.html", req.url, configuration.contentType.html, useGzip);
-                res.writeHead(200, buildHeader(configuration.contentType.html, useGzip));
+                content = await readFile("index.html", req.url, configuration.contentType.html);
+                header = buildHeader(configuration.contentType.html, useGzip, content.hash);
             }
+
+            // Test the hash of the request etag to know if the client's cash is still up to date.
+            if (req.headers["if-none-match"] === content.hash) {
+                res.writeHead(304, buildHeader(getContentType(req.url), false, null));
+                res.write("");
+            } else {
+                res.writeHead(statusCode, statusMessage, header);
+                res.write(useGzip ? content.gzipData : content.data);
+            }
+
         } catch(err) {
             logger.error(`Internal server error: ${err.text}`, err);
-            content = "";
-            res.writeHead(500, "Internal server error", buildHeader(configuration.contentType.html, false));
+            res.writeHead(500, "Internal server error", buildHeader(configuration.contentType.html, false, null));
+            res.write("");
         }
 
-        res.write(content);
         res.end();
     });
 }

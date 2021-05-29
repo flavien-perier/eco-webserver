@@ -14,7 +14,7 @@ To do so, the server uses different strategies depending on the types of files i
 - [X] Reverse proxy
 - [X] Isomorphic application
 - [X] GZIP implementation
-- [ ] Include Etag
+- [X] Include Etag
 - [X] Include html minifiers
 - [X] Include css minifiers
 - [X] Include json minifiers

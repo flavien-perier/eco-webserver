@@ -46,7 +46,7 @@ function readProcessingCache(hash, fileFormat) {
  * @param {string} fileFormat
  * @returns {string}
  */
- function fileCacheDir(hash, fileFormat) {
+function fileCacheDir(hash, fileFormat) {
     return join(configuration.cacheDir, `${hash}.${fileFormat}`);
 }
 

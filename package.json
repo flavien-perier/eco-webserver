@@ -1,6 +1,6 @@
 {
   "name": "eco-webserver",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Static file NodeJs server",
   "keywords": [
     "static",
@@ -21,9 +21,9 @@
     "test": "jasmine --config=jasmine.json"
   },
   "dependencies": {
-    "canvas": "2.7.0",
-    "jsdom": "16.5.2",
-    "terser": "5.6.1"
+    "canvas": "2.8.0",
+    "jsdom": "16.6.0",
+    "terser": "5.7.0"
   },
   "devDependencies": {
     "jasmine": "3.7.0",

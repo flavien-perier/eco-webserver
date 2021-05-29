@@ -75,7 +75,7 @@ describe("server", () => {
 
         it("Should display a page with a custom header", done => {
             supertest(proxyquire("../src/server", mockConfiguration)())
-                .get("/redirection")
+                .get("/")
                 .expect(200)
                 .expect("Content-Type", "text/html")
                 .expect("Test-Header", "Header-Value")
@@ -90,6 +90,40 @@ describe("server", () => {
                                 <h1>Simple</h1>
                             </body>
                         </html>`);
+                    done();
+                });
+        });
+
+        it("Should display a page with etag", done => {
+            const etag = "d68ffeb0ba128b157bc38ed5620b0a2f66bf792d465b43b99d83d8e33571364b";
+
+            supertest(proxyquire("../src/server", mockConfiguration)())
+                .get("/")
+                .expect(200)
+                .expect("Content-Type", "text/html")
+                .expect("etag", etag)
+                .end((err, res) => {
+                    expect(err).toBeNull();
+                    testTools.compareHtml(res.text, `<!DOCTYPE html>
+                        <html>
+                            <head>
+                                <title>Simple</title>
+                            </head>
+                            <body>
+                                <h1>Simple</h1>
+                            </body>
+                        </html>`);
+
+                        supertest(proxyquire("../src/server", mockConfiguration)())
+                            .get("/redirection")
+                            .set("If-None-Match", etag)
+                            .expect(304)
+                            .expect("Content-Type", "text/html")
+                            .end((err, res) => {
+                                expect(err).toBeNull();
+                                expect(res.text).toEqual("");
+                                done();
+                            });
                     done();
                 });
         });
