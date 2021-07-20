@@ -9,7 +9,7 @@ const configuration = require("./configuration").default;
  * Pushes a treatment into the cache.
  *
  * @param {string | Buffer} afterProcessing
- * @param {string} fileFormat
+ * @param {string} hash
  * @returns {void}
  */
 async function writeProcessingCache(afterProcessing, hash, fileFormat) {
@@ -25,7 +25,7 @@ async function writeProcessingCache(afterProcessing, hash, fileFormat) {
 /**
  * Recovers a cache treatment.
  *
- * @param {string} fileFormat
+ * @param {string} hash
  * @param {string} fileFormat
  * @returns {Buffer | null}
  */
@@ -42,7 +42,7 @@ function readProcessingCache(hash, fileFormat) {
 /**
  * Gives the location of the cached file.
  *
- * @param {string | Buffer} beforeProcessing
+ * @param {string | Buffer} hash
  * @param {string} fileFormat
  * @returns {string}
  */

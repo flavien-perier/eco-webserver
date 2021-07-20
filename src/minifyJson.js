@@ -18,7 +18,7 @@ module.exports = function minifyJs(inputJson, hash) {
         return cacheJson.toString();
     }
 
-    let outputJson = "";
+    let outputJson;
 
     try {
         outputJson = JSON.stringify(JSON.parse(inputJson));

@@ -33,7 +33,7 @@ module.exports = async function minifyJs(inputJs, hash) {
         result = { error: err };
     }
     
-    let outputJs = "";
+    let outputJs;
 
     if (result.error) {
         logger.error("Compression error with terser", result.error);

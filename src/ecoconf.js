@@ -9,5 +9,5 @@ module.exports = {
     enableIsomorphic: true,
     header: {},
     contentType: {},
-    proxy: {}
+    proxy: {},
 }

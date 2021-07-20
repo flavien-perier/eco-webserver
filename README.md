@@ -63,7 +63,7 @@ module.exports = {
     },
     proxy: {
         "/articles": "https://articles.flavien.io/"
-    }
+    },
 }
 ```
 

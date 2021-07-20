@@ -19,13 +19,18 @@ describe("server", () => {
                     logDir: "/dev/null",
                     enableIsomorphic: false,
                     header: {
-                        "Test-Header": "Header-Value"
+                        "Test-Header": "Header-Value",
                     },
-                    contentType: {"html": "text/html", "css": "text/css", "js": "application/javascript", "json": "application/json"},
+                    contentType: {
+                        "html": "text/html",
+                        "css": "text/css",
+                        "js": "application/javascript",
+                        "json": "application/json",
+                    },
                     proxy : {},
-                    use404File: false
+                    use404File: false,
                 },
-                "@global": true
+                "@global": true,
             }
         };
 
@@ -140,7 +145,12 @@ describe("server", () => {
                     logDir: "/dev/null",
                     enableIsomorphic: false,
                     header: {},
-                    contentType: {"html": "text/html", "css": "text/css", "js": "application/javascript", "json": "application/json"},
+                    contentType: {
+                        "html": "text/html",
+                        "css": "text/css",
+                        "js": "application/javascript",
+                        "json": "application/json",
+                    },
                     proxy : {},
                     use404File: true
                 },
@@ -186,11 +196,16 @@ describe("server", () => {
                     logDir: "/dev/null",
                     enableIsomorphic: false,
                     header: {},
-                    contentType: {"html": "text/html", "css": "text/css", "js": "application/javascript", "json": "application/json"},
+                    contentType: {
+                        "html": "text/html",
+                        "css": "text/css",
+                        "js": "application/javascript",
+                        "json": "application/json",
+                    },
                     proxy : {},
-                    use404File: false
+                    use404File: false,
                 },
-                "@global": true
+                "@global": true,
             }
         };
 
@@ -272,13 +287,18 @@ describe("server", () => {
                     logDir: "/dev/null",
                     enableIsomorphic: true,
                     header: {
-                        "Test-Header": "Header-Value"
+                        "Test-Header": "Header-Value",
                     },
-                    contentType: {"html": "text/html", "css": "text/css", "js": "application/javascript", "json": "application/json"},
+                    contentType: {
+                        "html": "text/html",
+                        "css": "text/css",
+                        "js": "application/javascript",
+                        "json": "application/json"
+                    },
                     proxy : {},
-                    use404File: false
+                    use404File: false,
                 },
-                "@global": true
+                "@global": true,
             }
         };
 
@@ -326,13 +346,18 @@ describe("server", () => {
                     logDir: "/dev/null",
                     enableIsomorphic: false,
                     header: {},
-                    contentType: {"html": "text/html", "css": "text/css", "js": "application/javascript", "json": "application/json"},
-                    proxy : {
-                        "/test": `http://127.0.0.1:${TEST_PORT}`
+                    contentType: {
+                        "html": "text/html",
+                        "css": "text/css",
+                        "js": "application/javascript",
+                        "json": "application/json",
                     },
-                    use404File: false
+                    proxy : {
+                        "/test": `http://127.0.0.1:${TEST_PORT}`,
+                    },
+                    use404File: false,
                 },
-                "@global": true
+                "@global": true,
             }
         };
 

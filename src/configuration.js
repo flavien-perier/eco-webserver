@@ -42,7 +42,7 @@ exports.default = {
     /**
      * @type {boolean}
      */
-    enableIsomorphic: ecoconf.enableIsomorphic ? true : false,
+    enableIsomorphic: !!ecoconf.enableIsomorphic,
 
     /**
      * @type {{[string]: string}}
