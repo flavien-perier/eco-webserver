@@ -1,6 +1,5 @@
 .idea
 .vscode
-node_modules
 dist
+node_modules
 package-lock.json
-ecoconf.js

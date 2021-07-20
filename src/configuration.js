@@ -11,7 +11,7 @@ if (!existsSync(CONF_DIR)) {
 
 const ecoconf = require(CONF_DIR);
 
-const DIST_DIR = join(process.cwd(), process.env.ECO_DIST_DIR || ecoconf.distDir || "dist");
+const DIST_DIR = process.env.ECO_DIST_DIR || ecoconf.distDir || "dist";
 
 exports.default = {
     /**

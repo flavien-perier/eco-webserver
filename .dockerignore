@@ -1,8 +1,7 @@
 .github
-.dockerignore
 Dockerfile
-ecoconf.js
 jasmine.json
 node_modules
 package-lock.json
+README.md
 tests

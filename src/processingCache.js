@@ -52,5 +52,5 @@ function fileCacheDir(hash, fileFormat) {
 
 module.exports = {
     writeProcessingCache,
-    readProcessingCache
+    readProcessingCache,
 };

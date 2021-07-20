@@ -1,4 +1,5 @@
 ![license](https://badgen.net/github/license/flavien-perier/eco-webserver)
+[![docker pulls](https://badgen.net/docker/pulls/flavienperier/eco-webserver)](https://hub.docker.com/r/flavienperier/eco-webserver)
 [![npm version](https://badgen.net/npm/v/eco-webserver)](https://www.npmjs.com/package/eco-webserver)
 [![ci status](https://badgen.net/github/checks/flavien-perier/eco-webserver)](https://github.com/flavien-perier/eco-webserver)
 
@@ -56,10 +57,10 @@ module.exports = {
         "Server": "eco-webserver",
         "Cache-Control": "max-age=86400",
         "X-XSS-Protection": "1;mode=block",
-        "X-Frame-Options": "DENY"
+        "X-Frame-Options": "DENY",
     },
     contentType: {
-        "mp4": "video/mpeg"
+        "mp4": "video/mpeg",
     },
     proxy: {
         "/articles": "https://articles.flavien.io/"
@@ -84,6 +85,33 @@ For PaaS or Docker platform users, it is possible to inject configuration throug
 - `ECO_DIST_DIR`: Location of website files to be exhibited.
 - `ECO_CACHE_DIR`: Location of the working cache.
 - `ECO_LOG_DIR`: Location of log file.
+
+### With Docker
+
+#### Ports
+
+- 8080: HTTP
+
+#### Volumes
+
+- /dist
+- /cache
+
+#### Docker-compose example
+
+```yaml
+dns:
+  image: flavienperier/eco-webserver
+  container_name: eco-webserver
+  restart: always
+  volumes:
+    - ./dist:/dist
+    - ./cache:/cache
+  ports:
+    - 8080:8080
+  environment:
+    ECO_CACHE_CYCLE: nginx
+```
 
 ### File organisation
 
