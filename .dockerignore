@@ -1,4 +1,7 @@
+.git
 .github
+.gitignore
+.npmignore
 Dockerfile
 jasmine.json
 node_modules

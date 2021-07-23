@@ -110,7 +110,7 @@ dns:
   ports:
     - 8080:8080
   environment:
-    ECO_CACHE_CYCLE: nginx
+    ECO_CACHE_CYCLE: 1800
 ```
 
 ### File organisation
