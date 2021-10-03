@@ -178,11 +178,11 @@ function evaluateHtmlFile(content, requestUrl) {
         /**
          * Function to execute a script in the virtual DOM.
          *
-         * @param {Script} script
+         * @param {Script} scriptTxt
          */
-        const executeScript = (script) => {
+        const executeScript = (scriptTxt) => {
             try {
-                script.runInContext(vmContext);
+                new Script(scriptTxt).runInContext(vmContext);
             } catch(err) {
                 logger.error("Error with script execution", err);
             }
@@ -200,15 +200,15 @@ function evaluateHtmlFile(content, requestUrl) {
                             res.on("data", data => {
                                 buffer = Buffer.concat([buffer, data]);
                             }).on("end", () => {
-                                executeScript(new Script(buffer.toString()));
+                                executeScript(buffer.toString());
                             });
                         });
                     } else {
                         const cacheValue = await readFile(scriptSrc, scriptSrc, configuration.contentType.js);
-                        executeScript(new Script(cacheValue.data));
+                        executeScript(cacheValue.data);
                     }
                 } else {
-                    executeScript(new Script(script.innerHTML));
+                    executeScript(script.innerHTML);
                 }
             });
 
@@ -222,7 +222,7 @@ function evaluateHtmlFile(content, requestUrl) {
             const computedHtmlMd5 = createHash("md5").update(computedHtml).digest("hex");
 
             if (lastComputedHtmlMd5 === computedHtmlMd5 || increment++ > 20) {
-                dom.window.stop();
+                new Script("window.stop();").runInContext(vmContext);
                 resolve(computedHtml);
                 clearInterval(loop);
             } else {
