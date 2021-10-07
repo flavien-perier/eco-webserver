@@ -1,6 +1,6 @@
 FROM node:lts-alpine as builder
 
-WORKDIR --chown=root:root /opt/eco-webserver
+WORKDIR /opt/eco-webserver
 
 COPY --chown=root:root . .
 
@@ -26,11 +26,11 @@ ENV ECO_CACHE_CYCLE="1800"
 WORKDIR /opt/eco-webserver
 VOLUME ["/dist", "/cache"]
 
-COPY --chown=eco-webserver:eco-webserver --from=builder /opt/eco-webserver .
-
 RUN apk add --no-cache libpng-dev jpeg-dev giflib-dev pango-dev cairo-dev && \
     addgroup -g $DOCKER_GID eco-webserver && \
     adduser -G eco-webserver -D -H -h /opt/eco-webserver -u $DOCKER_UID eco-webserver
+
+COPY --chown=eco-webserver:eco-webserver --from=builder /opt/eco-webserver .
 
 USER eco-webserver
 
