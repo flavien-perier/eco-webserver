@@ -1,6 +1,6 @@
 {
   "name": "eco-webserver",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Static file NodeJs server",
   "keywords": [
     "static",
