@@ -166,11 +166,13 @@ function evaluateHtmlFile(content, requestUrl) {
             url: `http://127.0.0.1:${configuration.port}${requestUrl}`,
             referrer: `http://127.0.0.1:${configuration.port}${requestUrl}`,
             contentType: "text/html",
-            userAgent: "internal-eco-webserver",
-            virtualConsole: virtualConsole,
-            strictSSL: false,
+            virtualConsole,
             includeNodeLocations: true,
-            runScripts: "outside-only"
+            runScripts: "outside-only",
+            resources: new jsdom.ResourceLoader({
+                userAgent: "internal-eco-webserver",
+                strictSSL: false,
+            }),
         });
 
         const vmContext = dom.getInternalVMContext();
