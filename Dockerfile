@@ -15,7 +15,7 @@ RUN apk add --no-cache build-base g++ python libpng-dev jpeg-dev giflib-dev pang
 FROM node:lts-alpine
 
 LABEL maintainer="Flavien PERIER <perier@flavien.io>" \
-      version="1.0.11" \
+      version="1.0.12" \
       description="eco-webserver"
 
 ARG DOCKER_UID="500" \

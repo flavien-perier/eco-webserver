@@ -5,17 +5,9 @@ describe("buildHeader", () => {
     const mockConfiguration = {
         "./configuration": {
             default: {
-                port: 8080,
-                cacheCycle: 1800,
-                distDir: "./tests/testDist/simple",
-                logDir: "/dev/null",
-                enableIsomorphic: false,
                 header: {
                     "test": "123",
                 },
-                contentType: {},
-                proxy : {},
-                use404File: false,
             },
             "@global": true,
         }

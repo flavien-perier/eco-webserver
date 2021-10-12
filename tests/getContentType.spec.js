@@ -4,12 +4,6 @@ describe("getContentType", () => {
     const mockConfiguration = {
         "./configuration": {
             default: {
-                port: 8080,
-                cacheCycle: 1800,
-                distDir: "./tests/testDist/simple",
-                logDir: "/dev/null",
-                enableIsomorphic: false,
-                header: {},
                 contentType: {
                     "text": "text/plain",
                     "binary": "application/octet-stream",
@@ -18,8 +12,6 @@ describe("getContentType", () => {
                     "js": "application/javascript",
                     "json": "application/json",
                 },
-                proxy : {},
-                use404File: false,
             },
             "@global": true,
         }

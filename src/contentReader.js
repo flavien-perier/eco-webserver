@@ -178,7 +178,7 @@ function evaluateHtmlFile(content, requestUrl) {
         /**
          * Function to execute a script in the virtual DOM.
          *
-         * @param {Script} scriptTxt
+         * @param {string} scriptTxt
          */
         const executeScript = (scriptTxt) => {
             try {
@@ -222,7 +222,7 @@ function evaluateHtmlFile(content, requestUrl) {
             const computedHtmlMd5 = createHash("md5").update(computedHtml).digest("hex");
 
             if (lastComputedHtmlMd5 === computedHtmlMd5 || increment++ > 20) {
-                new Script("window.stop();").runInContext(vmContext);
+                vmContext.close();
                 resolve(computedHtml);
                 clearInterval(loop);
             } else {
