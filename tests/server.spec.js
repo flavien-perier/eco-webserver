@@ -5,7 +5,7 @@ const proxyquire = require("proxyquire").noPreserveCache();
 
 const testTools = require("./testTools");
 
-const TEST_CACHE = "./tests/test-cache";
+const TEST_CACHE = "/tmp/eco-test-cache";
 
 describe("server", () => {
     describe("Simple configuration", () => {
@@ -33,6 +33,10 @@ describe("server", () => {
                 "@global": true,
             }
         };
+
+        beforeEach(() => {
+            fs.mkdirSync(TEST_CACHE);
+        });
 
         afterEach(() => {
             fs.rmdirSync(TEST_CACHE, { recursive: true });
@@ -129,7 +133,6 @@ describe("server", () => {
                                 expect(res.text).toEqual("");
                                 done();
                             });
-                    done();
                 });
         });
     });
@@ -157,6 +160,10 @@ describe("server", () => {
                 "@global": true
             }
         };
+
+        beforeEach(() => {
+            fs.mkdirSync(TEST_CACHE);
+        });
 
         afterEach(() => {
             fs.rmdirSync(TEST_CACHE, { recursive: true });
@@ -209,6 +216,10 @@ describe("server", () => {
             }
         };
 
+        beforeEach(() => {
+            fs.mkdirSync(TEST_CACHE);
+        });
+
         afterEach(() => {
             fs.rmdirSync(TEST_CACHE, { recursive: true });
         });
@@ -252,6 +263,7 @@ describe("server", () => {
 
                     fs.writeFileSync(SANDBOX_DIR + "/index.html", "");
                     fs.rmdirSync(TEST_CACHE, { recursive: true });
+                    fs.mkdirSync(TEST_CACHE);
 
                     supertest(server)
                         .get("/")
@@ -301,6 +313,10 @@ describe("server", () => {
                 "@global": true,
             }
         };
+
+        beforeEach(() => {
+            fs.mkdirSync(TEST_CACHE);
+        });
 
         afterEach(() => {
             fs.rmdirSync(TEST_CACHE, { recursive: true });
@@ -361,13 +377,17 @@ describe("server", () => {
             }
         };
 
+        beforeEach(() => {
+            fs.mkdirSync(TEST_CACHE);
+        });
+
         afterEach(() => {
             fs.rmdirSync(TEST_CACHE, { recursive: true });
         });
 
         const server = http.createServer((req, res) => {
             console.log(req.url)
-            if (req.url == "/path") {
+            if (req.url === "/path") {
                 res.writeHead(200);
                 res.write("test path");
             } else {
