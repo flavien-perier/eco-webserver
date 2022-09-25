@@ -78,7 +78,7 @@ describe("minifyHtml", () => {
         const fileHash = "htmlHash3";
 
         const expectedHtml = "<html lang=fr><p id=id1 class=\"class1 class2\">test</p><br/>"
-            + "<script async>function test(){if(3===yes)return{a:4,b:\"test\",c:[4,5,\"(a == 3)\"]}}</script></html>";
+            + "<script type=text/javascript async>function test(){if(3===yes)return{a:4,b:\"test\",c:[4,5,\"(a == 3)\"]}}</script></html>";
 
         expect(await minifyHtml(inputHtml, fileHash)).toEqual(expectedHtml);
     });

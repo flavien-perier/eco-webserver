@@ -14,7 +14,6 @@ const STYLE_TAG_MATCHER = /(<style.*?>)(.*?)<\/style>/sg;
 const SCRIPT_TAG_MATCHER = /(<script.*?>)(.*?)<\/script>/sg;
 
 const DELETED_PARAMETERS = [
-    "script:type",
     "script:charset",
     "style:type",
     "style:charset"
