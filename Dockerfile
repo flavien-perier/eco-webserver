@@ -1,18 +1,20 @@
-FROM node:lts-alpine as builder
+FROM node:hydrogen-alpine as builder
+
+ARG GLIBC_VERSION="2.35-r1"
 
 WORKDIR /opt/eco-webserver
 
 RUN apk add --no-cache build-base g++ python3 libpng-dev jpeg-dev giflib-dev pango-dev cairo-dev git ca-certificates wget && \
     wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub && \
-    wget https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.29-r0/glibc-2.29-r0.apk && \
-    apk add glibc-2.29-r0.apk && \
-    rm glibc-2.29-r0.apk
+    wget https://github.com/sgerrand/alpine-pkg-glibc/releases/download/$GLIBC_VERSION/glibc-$GLIBC_VERSION.apk && \
+    apk add glibc-$GLIBC_VERSION.apk && \
+    rm glibc-$GLIBC_VERSION.apk
 
 COPY --chown=root:root --chmod=750 . .
 
 RUN npm install --production
 
-FROM node:lts-alpine
+FROM node:hydrogen-alpine
 
 LABEL org.opencontainers.image.title="eco-webserver" \
       org.opencontainers.image.description="eco webserver" \
@@ -23,8 +25,8 @@ LABEL org.opencontainers.image.title="eco-webserver" \
       org.opencontainers.image.source="https://github.com/flavien-perier/eco-webserver" \
       org.opencontainers.image.licenses="MIT"
 
-ARG DOCKER_UID="1000" \
-    DOCKER_GID="1000"
+ARG DOCKER_UID="1100" \
+    DOCKER_GID="1100"
 
 ENV ECO_CACHE_CYCLE="1800"
 
