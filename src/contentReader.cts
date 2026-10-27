@@ -22,13 +22,22 @@ const minifyXml = require("./minifyXml.cts");
 const convertImage = require("./convertImage.cts");
 const convertFont = require("./convertFont.cts");
 const renderChromium = require("./renderChromium.cts");
-const gzipData = require("./gzipData.cts");
-const brotliData = require("./brotliData.cts");
+const { CompressionPool } = require("./compressionPool.cts");
 const Logger = require("./Logger.cts");
 
 const logger = new Logger();
 
 const virtualConsole = new jsdom.VirtualConsole();
+
+/**
+ * Number of workers compressing the text resources outside of the event loop.
+ */
+const COMPRESSION_POOL_SIZE = Math.max(1, Number(process.env.ECO_COMPRESSION_POOL_SIZE) || 4);
+
+/**
+ * Compresses the text resources with `gzip` and `brotli` inside workers.
+ */
+const compressionPool = new CompressionPool(COMPRESSION_POOL_SIZE);
 
 const TXT_CONETENT_TYPE: string[] = [
     configuration.contentType.html,
@@ -143,9 +152,10 @@ class CacheValue {
                     break;
             }
 
-            // Compresses only the text formats.
-            this.gzipData = gzipData(this.data);
-            this.brotliData = brotliData(this.data);
+            // Compresses only the text formats, outside of the event loop.
+            const compressed = await compressionPool.compress(this.data);
+            this.gzipData = compressed.gzipData;
+            this.brotliData = compressed.brotliData;
         } else {
             this.data = readFileSync(join(configuration.distDir, filePath));
             this.dataType = "bin";
@@ -185,8 +195,9 @@ class CacheValue {
             this.data = buffer.toString("utf8");
             this.dataType = "txt";
             this.contentType = contentType;
-            this.gzipData = gzipData(this.data);
-            this.brotliData = brotliData(this.data);
+            const compressed = await compressionPool.compress(this.data);
+            this.gzipData = compressed.gzipData;
+            this.brotliData = compressed.brotliData;
         } else {
             this.dataType = "bin";
             const converted = await convertResource(buffer, contentType);

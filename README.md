@@ -15,6 +15,9 @@ To do so, the server uses different strategies depending on the types of files i
 - [X] Reverse proxy
 - [X] Isomorphic application
 - [X] Isomorphic rendering with chromium via [puppeteer-core](https://www.npmjs.com/package/puppeteer-core) (jsdom fallback)
+- [X] Multithreaded `gzip` and `brotli` compression with [worker_threads](https://nodejs.org/api/worker_threads.html)
+
+The server sources are written in TypeScript and executed directly by Node.js 24 (type stripping) — no compilation step is required.
 - [X] GZIP and brotli implementation
 - [X] Include Etag
 - [X] Include html minifiers
@@ -90,6 +93,7 @@ For PaaS or Docker platform users, it is possible to inject configuration throug
 - `ECO_CACHE_DIR`: Location of the working cache.
 - `ECO_LOG_DIR`: Location of log file.
 - `ECO_CHROMIUM_PATH`: Path of the chromium binary used for the isomorphic rendering.
+- `ECO_COMPRESSION_POOL_SIZE`: Number of worker threads used to compress the text resources with `gzip` and `brotli` (default 4).
 
 ### With Docker
 
