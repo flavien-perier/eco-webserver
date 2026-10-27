@@ -1,20 +1,14 @@
-FROM node:hydrogen-alpine as builder
-
-ARG GLIBC_VERSION="2.35-r1"
+FROM node:24-alpine as builder
 
 WORKDIR /opt/eco-webserver
 
-RUN apk add --no-cache build-base g++ python3 libpng-dev jpeg-dev giflib-dev pango-dev cairo-dev vips-dev glib-dev git ca-certificates wget && \
-    wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub && \
-    wget https://github.com/sgerrand/alpine-pkg-glibc/releases/download/$GLIBC_VERSION/glibc-$GLIBC_VERSION.apk && \
-    apk add glibc-$GLIBC_VERSION.apk && \
-    rm glibc-$GLIBC_VERSION.apk
+RUN apk add --no-cache build-base g++ python3 libpng-dev jpeg-dev giflib-dev pango-dev cairo-dev vips-dev glib-dev git ca-certificates
 
 COPY --chown=root:root --chmod=750 . .
 
 RUN npm install --production
 
-FROM node:hydrogen-alpine
+FROM node:24-alpine
 
 LABEL org.opencontainers.image.title="eco-webserver" \
       org.opencontainers.image.description="eco webserver" \
@@ -36,7 +30,7 @@ VOLUME ["/dist", "/cache"]
 
 RUN apk add --no-cache libpng-dev jpeg-dev giflib-dev pango-dev cairo-dev vips chromium && \
     addgroup -g $DOCKER_GID eco-webserver && \
-    adduser -G eco-webserver -D -H -h /opt/eco-webserver -u $DOCKER_UID eco-webserver
+    adduser -G eco-webserver -D -h /home/eco-webserver -u $DOCKER_UID eco-webserver
 
 USER eco-webserver
 

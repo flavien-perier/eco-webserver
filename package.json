@@ -13,6 +13,9 @@
   ],
   "author": "Flavien PERIER <perier@flavien.io>",
   "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
   "main": "cli.js",
   "bin": {
     "eco-webserver": "./cli.js"

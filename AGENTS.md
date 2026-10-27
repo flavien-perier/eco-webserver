@@ -2,7 +2,7 @@
 
 ## Commands
 
-- `npm test` — full Jasmine suite (`jasmine --config=jasmine.json`, specs are `tests/**/*.spec.js`). CI (`.github/workflows/test.yml`) runs `npm install && npm test` on Node 16.
+- `npm test` — full Jasmine suite (`jasmine --config=jasmine.json`, specs are `tests/**/*.spec.js`). CI (`.github/workflows/test.yml`) runs `npm install && npm test` on Node 24.
 - Run one spec file: `npm test -- tests/server.spec.js` (positional paths resolve from the repo root, not from `spec_dir`).
 - Run the server: `node cli.js` (bin `eco-webserver`). No build/transpile step — plain CommonJS.
 - No lint, formatter, or typecheck tooling exists. Match existing style: 4-space indent, `require`/`module.exports`, JSDoc types on exports.
