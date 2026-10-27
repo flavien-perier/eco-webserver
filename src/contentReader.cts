@@ -243,7 +243,7 @@ async function convertResource(data: Buffer, contentType: string): Promise<{ dat
  * @returns {Promise<string>}
  */
 function evaluateHtmlFile(content: string, requestUrl: string): Promise<string> {
-    return new Promise((resolve: (html: string) => void, reject) => {
+    return new Promise(async (resolve: (html: string) => void) => {
         // Declares a virtual DOM.
         const dom = new jsdom.JSDOM(content, {
             url: `http://127.0.0.1:${configuration.port}${requestUrl}`,
@@ -270,18 +270,21 @@ function evaluateHtmlFile(content: string, requestUrl: string): Promise<string> 
         }
 
         // Finds the source of each script and sends it to the `executeScript` function.
-        [...dom.window.document.getElementsByTagName("script").valueOf()]
-            .forEach(async script => {
+        const scriptsPromises = [...dom.window.document.getElementsByTagName("script").valueOf()]
+            .map(async script => {
                 if (script.attributes && script.attributes.src && script.attributes.src.value) {
                     const scriptSrc = script.attributes.src.value;
 
                     if (/^http[s]?:\/\//.test(scriptSrc)) {
-                        let buffer = Buffer.alloc(0);
-                        (scriptSrc.split(":")[0] === "https" ? https : http).get(parse(scriptSrc), res => {
-                            res.on("data", data => {
-                                buffer = Buffer.concat([buffer, data]);
-                            }).on("end", () => {
-                                executeScript(buffer.toString());
+                        await new Promise((resolve: () => void) => {
+                            let buffer = Buffer.alloc(0);
+                            (scriptSrc.split(":")[0] === "https" ? https : http).get(parse(scriptSrc), res => {
+                                res.on("data", data => {
+                                    buffer = Buffer.concat([buffer, data]);
+                                }).on("end", () => {
+                                    executeScript(buffer.toString());
+                                    resolve();
+                                });
                             });
                         });
                     } else {
@@ -292,6 +295,9 @@ function evaluateHtmlFile(content: string, requestUrl: string): Promise<string> 
                     executeScript(script.innerHTML);
                 }
             });
+
+        // Waits for each script source to be loaded and executed before checking the dom stability.
+        await Promise.all(scriptsPromises);
 
         // Checks if the dom is still being modified. If not, displays its current status.
 
