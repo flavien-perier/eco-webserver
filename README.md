@@ -14,15 +14,16 @@ To do so, the server uses different strategies depending on the types of files i
 - [X] Cache files
 - [X] Reverse proxy
 - [X] Isomorphic application
-- [X] GZIP implementation
+- [X] GZIP and brotli implementation
 - [X] Include Etag
 - [X] Include html minifiers
 - [X] Include css minifiers
 - [X] Include json minifiers
 - [X] Include js minifiers with [terser](https://www.npmjs.com/package/terser)
-- [ ] Optimize images and convert them to webp
-- [ ] Optimize svg path
-- [ ] Optimize fonts and convert them to woff2
+- [X] Include svg minifiers with [svgo](https://www.npmjs.com/package/svgo)
+- [X] Include xml minifiers
+- [X] Optimize images and convert them to webp with [sharp](https://www.npmjs.com/package/sharp)
+- [X] Optimize fonts and convert them to woff2 with [wawoff2](https://www.npmjs.com/package/wawoff2)
 
 ## Usage
 

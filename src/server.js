@@ -23,7 +23,9 @@ module.exports = () => {
         logger.http(req.headers["x-real-ip"] || req.connection.remoteAddress, req.headers["user-agent"], req.method, req.url);
 
         const fileUrl = join(configuration.distDir, req.url);
-        const useGzip = (req.headers["accept-encoding"] || "").indexOf("gzip") != -1;
+        const acceptEncoding = req.headers["accept-encoding"] || "";
+        const useBrotli = acceptEncoding.indexOf("br") != -1;
+        const useGzip = acceptEncoding.indexOf("gzip") != -1;
 
         try {
             /**
@@ -47,30 +49,29 @@ module.exports = () => {
             let content;
 
             if (Object.keys(configuration.proxy).some(url => url === req.url.substr(0, url.length))) {
-                const contentType = getContentType(req.url);
-                content = await readProxy(req.url, useGzip);
-                header = buildHeader(contentType, useGzip, content.hash);
+                content = await readProxy(req.url);
             } else if (existsSync(fileUrl) && lstatSync(fileUrl).isFile()) {
                 const contentType = getContentType(req.url);
                 content = await readFile(req.url, req.url, contentType);
-                header = buildHeader(contentType, useGzip, content.hash);
             } else if (configuration.use404File) {
                 content = await readFile("404.html", req.url, configuration.contentType.html);
                 statusCode = 404;
                 statusMessage = "Not found";
-                header = buildHeader(configuration.contentType.html, useGzip, content.hash);
             } else {
                 content = await readFile("index.html", req.url, configuration.contentType.html);
-                header = buildHeader(configuration.contentType.html, useGzip, content.hash);
             }
+
+            // Chooses the best compression accepted by the client.
+            const encoding = useBrotli && content.brotliData ? "br" : useGzip && content.gzipData ? "gzip" : false;
+            header = buildHeader(content.contentType, encoding, content.hash);
 
             // Test the hash of the request etag to know if the client's cash is still up to date.
             if (req.headers["if-none-match"] === content.hash) {
-                res.writeHead(304, buildHeader(getContentType(req.url), false, null));
+                res.writeHead(304, buildHeader(content.contentType, false, null));
                 res.write("");
             } else {
                 res.writeHead(statusCode, statusMessage, header);
-                res.write(useGzip ? content.gzipData : content.data);
+                res.write(encoding === "br" ? content.brotliData : encoding === "gzip" ? content.gzipData : content.data);
             }
 
         } catch(err) {

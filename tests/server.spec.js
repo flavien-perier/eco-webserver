@@ -1,11 +1,35 @@
 const fs = require("fs");
 const http = require("http");
+const { gunzipSync, brotliDecompressSync } = require("zlib");
 const supertest = require("supertest");
 const proxyquire = require("proxyquire").noPreserveCache();
 
 const testTools = require("./testTools");
 
 const TEST_CACHE = "/tmp/eco-test-cache";
+
+/**
+ * Sends a request to the server and recovers the raw response.
+ *
+ * @param {http.Server} server
+ * @param {string} path
+ * @param {{[string]: string}} headers
+ * @returns {Promise<{statusCode: number, headers: {[string]: string}, body: Buffer}>}
+ */
+const requestRaw = (server, path, headers) => new Promise((resolve, reject) => {
+    const req = http.request({ port: server.address().port, path: path, headers: headers || {} }, res => {
+        let body = Buffer.alloc(0);
+        res.on("data", data => {
+            body = Buffer.concat([body, data]);
+        });
+        res.on("end", () => {
+            resolve({ statusCode: res.statusCode, headers: res.headers, body: body });
+        });
+    });
+
+    req.on("error", reject);
+    req.end();
+});
 
 describe("server", () => {
     describe("Simple configuration", () => {
@@ -26,6 +50,14 @@ describe("server", () => {
                         "css": "text/css",
                         "js": "application/javascript",
                         "json": "application/json",
+                        "svg": "image/svg+xml",
+                        "xml": "application/xml",
+                        "png": "image/png",
+                        "webp": "image/webp",
+                        "otf": "font/otf",
+                        "ttf": "font/ttf",
+                        "woff": "font/woff",
+                        "woff2": "font/woff2",
                     },
                     proxy : {},
                     use404File: false,
@@ -58,6 +90,21 @@ describe("server", () => {
                                 <h1>Simple</h1>
                             </body>
                         </html>`);
+                    done();
+                });
+        });
+
+        it("Should display a minified svg", done => {
+            supertest(proxyquire("../src/server", mockConfiguration)())
+                .get("/test.svg")
+                .expect(200)
+                .expect("Content-Type", "image/svg+xml")
+                .end((err, res) => {
+                    expect(err).toBeNull();
+                    const svg = (res.text || res.body.toString());
+                    expect(svg).not.toContain("Test comment");
+                    expect(svg).not.toContain("metadata");
+                    expect(svg).toContain("<path");
                     done();
                 });
         });
@@ -427,6 +474,113 @@ describe("server", () => {
                     expect(res.text).toEqual("test path");
                     done();
                 });
+        });
+    });
+
+    describe("Configuration with conversions and compressions", () => {
+        const mockConfiguration = {
+            "./configuration": {
+                default: {
+                    port: 8080,
+                    cacheCycle: 1800,
+                    distDir: "./tests/testDist/simple",
+                    cacheDir: TEST_CACHE,
+                    logDir: "/dev/null",
+                    enableIsomorphic: false,
+                    header: {},
+                    contentType: {
+                        "html": "text/html",
+                        "css": "text/css",
+                        "js": "application/javascript",
+                        "json": "application/json",
+                        "svg": "image/svg+xml",
+                        "xml": "application/xml",
+                        "png": "image/png",
+                        "webp": "image/webp",
+                        "otf": "font/otf",
+                        "ttf": "font/ttf",
+                        "woff": "font/woff",
+                        "woff2": "font/woff2",
+                    },
+                    proxy : {},
+                    use404File: false,
+                },
+                "@global": true,
+            }
+        };
+
+        let server;
+
+        beforeAll(done => {
+            fs.mkdirSync(TEST_CACHE);
+            server = proxyquire("../src/server", mockConfiguration)();
+            server.listen(0, null, null, done);
+        });
+
+        afterAll(done => {
+            server.close(() => {
+                fs.rmdirSync(TEST_CACHE, { recursive: true });
+                done();
+            });
+        });
+
+        it("Should convert an image into webp without compression", async () => {
+            const { statusCode, headers, body } = await requestRaw(server, "/image.png");
+
+            expect(statusCode).toEqual(200);
+            expect(headers["content-type"]).toEqual("image/webp");
+            expect(headers["content-encoding"]).toBeUndefined();
+            expect(body.subarray(0, 4).toString()).toEqual("RIFF");
+            expect(body.subarray(8, 12).toString()).toEqual("WEBP");
+        });
+
+        it("Should convert a font into woff2", async () => {
+            const { statusCode, headers, body } = await requestRaw(server, "/test.otf");
+
+            expect(statusCode).toEqual(200);
+            expect(headers["content-type"]).toEqual("font/woff2");
+            expect(body.subarray(0, 4).toString()).toEqual("wOF2");
+        });
+
+        it("Should minify a xml file", async () => {
+            const { statusCode, headers, body } = await requestRaw(server, "/sitemap.xml");
+
+            const xml = body.toString();
+
+            expect(statusCode).toEqual(200);
+            expect(headers["content-type"]).toEqual("application/xml");
+            expect(xml).toContain(`<?xml version="1.0" encoding="UTF-8"?>`);
+            expect(xml).not.toContain("Test comment");
+            expect(xml).not.toMatch(/>\s+</);
+        });
+
+        it("Should compress a text file with brotli", async () => {
+            const { statusCode, headers, body } = await requestRaw(server, "/test.svg", { "Accept-Encoding": "gzip, br" });
+
+            const svg = brotliDecompressSync(body).toString();
+
+            expect(statusCode).toEqual(200);
+            expect(headers["content-encoding"]).toEqual("br");
+            expect(svg).toContain("<path");
+            expect(svg).not.toContain("Test comment");
+        });
+
+        it("Should compress a text file with gzip", async () => {
+            const { statusCode, headers, body } = await requestRaw(server, "/test.svg", { "Accept-Encoding": "gzip" });
+
+            const svg = gunzipSync(body).toString();
+
+            expect(statusCode).toEqual(200);
+            expect(headers["content-encoding"]).toEqual("gzip");
+            expect(svg).toContain("<path");
+        });
+
+        it("Should send a text file without compression", async () => {
+            const { statusCode, headers, body } = await requestRaw(server, "/test.svg");
+
+            expect(statusCode).toEqual(200);
+            expect(headers["content-encoding"]).toBeUndefined();
+            expect(body.toString()).toContain("<path");
         });
     });
 });

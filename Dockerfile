@@ -4,7 +4,7 @@ ARG GLIBC_VERSION="2.35-r1"
 
 WORKDIR /opt/eco-webserver
 
-RUN apk add --no-cache build-base g++ python3 libpng-dev jpeg-dev giflib-dev pango-dev cairo-dev git ca-certificates wget && \
+RUN apk add --no-cache build-base g++ python3 libpng-dev jpeg-dev giflib-dev pango-dev cairo-dev vips-dev glib-dev git ca-certificates wget && \
     wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub && \
     wget https://github.com/sgerrand/alpine-pkg-glibc/releases/download/$GLIBC_VERSION/glibc-$GLIBC_VERSION.apk && \
     apk add glibc-$GLIBC_VERSION.apk && \
@@ -33,7 +33,7 @@ ENV ECO_CACHE_CYCLE="1800"
 WORKDIR /opt/eco-webserver
 VOLUME ["/dist", "/cache"]
 
-RUN apk add --no-cache libpng-dev jpeg-dev giflib-dev pango-dev cairo-dev && \
+RUN apk add --no-cache libpng-dev jpeg-dev giflib-dev pango-dev cairo-dev vips && \
     addgroup -g $DOCKER_GID eco-webserver && \
     adduser -G eco-webserver -D -H -h /opt/eco-webserver -u $DOCKER_UID eco-webserver
 

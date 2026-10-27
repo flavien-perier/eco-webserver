@@ -23,7 +23,10 @@
   "dependencies": {
     "canvas": "2.10.1",
     "jsdom": "20.0.0",
-    "terser": "5.15.0"
+    "sharp": "0.32.6",
+    "svgo": "3.3.5",
+    "terser": "5.15.0",
+    "wawoff2": "2.0.1"
   },
   "devDependencies": {
     "jasmine": "4.4.0",

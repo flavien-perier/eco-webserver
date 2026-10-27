@@ -12,19 +12,53 @@ const jsdom = require("jsdom");
 const { Script } = require("vm");
 
 const configuration = require("./configuration").default;
+const getContentType = require("./getContentType");
 const minifyHtml = require("./minifyHtml");
 const minifyCss = require("./minifyCss");
 const minifyJs = require("./minifyJs");
 const minifyJson = require("./minifyJson");
+const minifySvg = require("./minifySvg");
+const minifyXml = require("./minifyXml");
+const convertImage = require("./convertImage");
+const convertFont = require("./convertFont");
 const gzipData = require("./gzipData");
+const brotliData = require("./brotliData");
 const Logger = require("./Logger");
 
 const logger = new Logger();
 
 const virtualConsole = new jsdom.VirtualConsole();
 
-const TXT_CONETENT_TYPE = [configuration.contentType.html, configuration.contentType.css, configuration.contentType.js, configuration.contentType.json];
+const TXT_CONETENT_TYPE = [
+    configuration.contentType.html,
+    configuration.contentType.css,
+    configuration.contentType.js,
+    configuration.contentType.json,
+    configuration.contentType.svg,
+    configuration.contentType.xml
+];
+const WEBP_CONVERSION_CONTENT_TYPE = [
+    configuration.contentType.png,
+    configuration.contentType.jpg,
+    configuration.contentType.jpeg,
+    configuration.contentType.gif,
+    configuration.contentType.tif,
+    configuration.contentType.tiff
+];
+const WOFF2_CONVERSION_CONTENT_TYPE = [
+    configuration.contentType.ttf,
+    configuration.contentType.otf
+];
+const CONVERTIBLE_CONTENT_TYPE = [...WEBP_CONVERSION_CONTENT_TYPE, ...WOFF2_CONVERSION_CONTENT_TYPE];
 const MAX_TTL = 10;
+
+/**
+ * Calculates the sha256 sum of a resource.
+ *
+ * @param {string | Buffer} data
+ * @returns {string}
+ */
+const sha256Hex = data => createHash("sha256").update(data || "").digest("hex");
 
 /**
  * Associates a URL with its content in the cache.
@@ -74,6 +108,16 @@ class CacheValue {
         this.gzipData;
 
         /**
+         * @type {Buffer}
+         */
+        this.brotliData;
+
+        /**
+         * @type {string}
+         */
+        this.contentType;
+
+        /**
          * @type {String}
          */
         this.hash;
@@ -88,36 +132,55 @@ class CacheValue {
      * @returns {Promise<void>}
      */
     async localFile(filePath, requestUrl, contentType) {
-        if (TXT_CONETENT_TYPE.indexOf(contentType) !== -1) {
+        this.contentType = contentType;
+
+        if (CONVERTIBLE_CONTENT_TYPE.indexOf(contentType) !== -1) {
+            this.data = readFileSync(join(configuration.distDir, filePath));
+            this.dataType = "bin";
+            const converted = await convertResource(this.data, contentType);
+            this.data = converted.data;
+            this.contentType = converted.contentType;
+            this.hash = sha256Hex(this.data);
+        } else if (TXT_CONETENT_TYPE.indexOf(contentType) !== -1) {
             this.data = readFileSync(join(configuration.distDir, filePath), "utf8");
             this.dataType = "txt";
+
+            if (contentType === configuration.contentType.html && configuration.enableIsomorphic)
+                this.data = await evaluateHtmlFile(this.data, requestUrl);
+
+            this.hash = sha256Hex(this.data);
+
+            switch(contentType) {
+                case configuration.contentType.html:
+                    this.data = await minifyHtml(this.data, this.hash);
+                    break;
+                case configuration.contentType.css:
+                    this.data = minifyCss(this.data, this.hash);
+                    break;
+                case configuration.contentType.js:
+                    this.data = await minifyJs(this.data, this.hash);
+                    break;
+                case configuration.contentType.json:
+                    this.data = minifyJson(this.data, this.hash);
+                    break;
+                case configuration.contentType.svg:
+                    this.data = minifySvg(this.data, this.hash);
+                    break;
+                case configuration.contentType.xml:
+                    this.data = minifyXml(this.data, this.hash);
+                    break;
+            }
+
+            // Compresses only the text formats.
+            this.gzipData = gzipData(this.data);
+            this.brotliData = brotliData(this.data);
         } else {
             this.data = readFileSync(join(configuration.distDir, filePath));
             this.dataType = "bin";
-        }
-
-        if (contentType === configuration.contentType.html && configuration.enableIsomorphic)
-            this.data = await evaluateHtmlFile(this.data, requestUrl);
-
-        this.hash = createHash("sha256").update(this.data || "").digest("hex");
-
-        switch(contentType) {
-            case configuration.contentType.html:
-                this.data = await minifyHtml(this.data, this.hash);
-                break;
-            case configuration.contentType.css:
-                this.data = minifyCss(this.data, this.hash);
-                break;
-            case configuration.contentType.js:
-                this.data = await minifyJs(this.data, this.hash);
-                break;
-            case configuration.contentType.json:
-                this.data = minifyJson(this.data, this.hash);
-                break;
+            this.hash = sha256Hex(this.data);
         }
 
         this.ttl = 0;
-        this.gzipData = gzipData(this.data);
     }
 
     /**
@@ -126,30 +189,67 @@ class CacheValue {
      * @param {string} requestUrl
      * @returns {Promise<void>}
      */
-    proxyFile(requestUrl) {
-        return new Promise((resolve, reject) => {
+    async proxyFile(requestUrl) {
+        const buffer = await new Promise((resolve, reject) => {
             const requestBaseUrl = Object.keys(configuration.proxy).filter(key => key === requestUrl.substr(0, key.length))[0];
             const proxyBaseUrl = configuration.proxy[requestBaseUrl];
 
             const proxyUrl = `${proxyBaseUrl}${requestUrl.substr(requestBaseUrl.length)}`;
             const options = parse(proxyUrl);
 
-            let buffer = Buffer.alloc(0);
+            let dataBuffer = Buffer.alloc(0);
             (options.protocol === "https:" ? https : http).get(options, res => {
                 res.on("data", data => {
-                    buffer = Buffer.concat([buffer, data]);
+                    dataBuffer = Buffer.concat([dataBuffer, data]);
                 }).on("end", () => {
-                    this.data = buffer;
-                    this.gzipData = gzipData(this.data);
-                    this.hash = createHash("sha256").update(this.data || "").digest("hex");
-                    resolve();
+                    resolve(dataBuffer);
                 });
             });
-
-            this.dataType = "bin";
-            this.ttl = 0;
         });
+
+        const contentType = getContentType(requestUrl);
+
+        if (TXT_CONETENT_TYPE.indexOf(contentType) !== -1) {
+            this.data = buffer.toString("utf8");
+            this.dataType = "txt";
+            this.contentType = contentType;
+            this.gzipData = gzipData(this.data);
+            this.brotliData = brotliData(this.data);
+        } else {
+            this.dataType = "bin";
+            const converted = await convertResource(buffer, contentType);
+            this.data = converted.data;
+            this.contentType = converted.contentType;
+        }
+
+        this.hash = sha256Hex(this.data);
+        this.ttl = 0;
     }
+}
+
+/**
+ * Converts a binary resource if its type allows it.
+ *
+ * @param {Buffer} data
+ * @param {string} contentType
+ * @returns {Promise<{data: Buffer, contentType: string}>}
+ */
+async function convertResource(data, contentType) {
+    if (WEBP_CONVERSION_CONTENT_TYPE.indexOf(contentType) !== -1) {
+        const webpData = await convertImage(data, sha256Hex(data));
+
+        if (webpData) {
+            return { data: webpData, contentType: configuration.contentType.webp };
+        }
+    } else if (WOFF2_CONVERSION_CONTENT_TYPE.indexOf(contentType) !== -1) {
+        const woff2Data = await convertFont(data, sha256Hex(data));
+
+        if (woff2Data) {
+            return { data: woff2Data, contentType: configuration.contentType.woff2 };
+        }
+    }
+
+    return { data, contentType };
 }
 
 /**
