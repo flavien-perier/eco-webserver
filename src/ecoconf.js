@@ -7,6 +7,7 @@ module.exports = {
     cacheDir: "cache",
     logDir: "application.log",
     enableIsomorphic: true,
+    chromiumPath: null,
     header: {},
     contentType: {},
     proxy: {},

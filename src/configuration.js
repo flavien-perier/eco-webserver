@@ -13,6 +13,14 @@ const ecoconf = require(CONF_DIR);
 
 const DIST_DIR = process.env.ECO_DIST_DIR || ecoconf.distDir || "dist";
 
+const CHROMIUM_CANDIDATES = [
+    "/usr/bin/chromium-browser",
+    "/usr/bin/chromium",
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable"
+];
+const DEFAULT_CHROMIUM_PATH = CHROMIUM_CANDIDATES.find(path => existsSync(path)) || null;
+
 exports.default = {
     /**
      * @type {number}
@@ -43,6 +51,11 @@ exports.default = {
      * @type {boolean}
      */
     enableIsomorphic: !!ecoconf.enableIsomorphic,
+
+    /**
+     * @type {string | null}
+     */
+    chromiumPath: process.env.ECO_CHROMIUM_PATH || ecoconf.chromiumPath || DEFAULT_CHROMIUM_PATH,
 
     /**
      * @type {{[string]: string}}

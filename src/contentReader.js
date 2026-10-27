@@ -21,6 +21,7 @@ const minifySvg = require("./minifySvg");
 const minifyXml = require("./minifyXml");
 const convertImage = require("./convertImage");
 const convertFont = require("./convertFont");
+const renderChromium = require("./renderChromium");
 const gzipData = require("./gzipData");
 const brotliData = require("./brotliData");
 const Logger = require("./Logger");
@@ -146,7 +147,7 @@ class CacheValue {
             this.dataType = "txt";
 
             if (contentType === configuration.contentType.html && configuration.enableIsomorphic)
-                this.data = await evaluateHtmlFile(this.data, requestUrl);
+                this.data = await renderChromium(this.data, requestUrl) || await evaluateHtmlFile(this.data, requestUrl);
 
             this.hash = sha256Hex(this.data);
 

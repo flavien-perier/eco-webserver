@@ -7,6 +7,7 @@ module.exports = {
     logDir: "/var/log/server.log",
     cacheDir: "/cache",
     enableIsomorphic: true,
+    chromiumPath: "/usr/bin/chromium-browser",
     header: {
         "Server": "eco-webserver",
     },

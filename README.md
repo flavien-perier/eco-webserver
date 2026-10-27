@@ -14,6 +14,7 @@ To do so, the server uses different strategies depending on the types of files i
 - [X] Cache files
 - [X] Reverse proxy
 - [X] Isomorphic application
+- [X] Isomorphic rendering with chromium via [puppeteer-core](https://www.npmjs.com/package/puppeteer-core) (jsdom fallback)
 - [X] GZIP and brotli implementation
 - [X] Include Etag
 - [X] Include html minifiers
@@ -54,6 +55,7 @@ module.exports = {
     cacheDir: "cache",
     logDir: "/tmp/eco-webserver.log",
     enableIsomorphic: true,
+    chromiumPath: "/usr/bin/chromium-browser",
     header: {
         "Server": "eco-webserver",
         "Cache-Control": "max-age=86400",
@@ -75,6 +77,7 @@ module.exports = {
 - **cacheDir**: Location of the working cache.
 - **logDir**: Location of log file.
 - **enableIsomorphic**: Calculates a rendering of the JavaScript scripts before sending the page to the client.
+- **chromiumPath**: Path of the chromium binary used to calculate the isomorphic rendering. If the path is not defined or if the binary is missing, the rendering automatically falls back on jsdom.
 - **header**: Html headers of the different queries.
 - **contentType**: Allows you to add Content-Types if those supported by default by the application are not enough.
 - **proxy**: Allows you to associate a remote resource with a local URL in order to cache it.
@@ -86,8 +89,11 @@ For PaaS or Docker platform users, it is possible to inject configuration throug
 - `ECO_DIST_DIR`: Location of website files to be exhibited.
 - `ECO_CACHE_DIR`: Location of the working cache.
 - `ECO_LOG_DIR`: Location of log file.
+- `ECO_CHROMIUM_PATH`: Path of the chromium binary used for the isomorphic rendering.
 
 ### With Docker
+
+The image includes a chromium build used for the isomorphic rendering (`ECO_CHROMIUM_PATH` is already configured).
 
 #### Ports
 

@@ -28,12 +28,13 @@ LABEL org.opencontainers.image.title="eco-webserver" \
 ARG DOCKER_UID="1100" \
     DOCKER_GID="1100"
 
-ENV ECO_CACHE_CYCLE="1800"
+ENV ECO_CACHE_CYCLE="1800" \
+    ECO_CHROMIUM_PATH="/usr/bin/chromium-browser"
 
 WORKDIR /opt/eco-webserver
 VOLUME ["/dist", "/cache"]
 
-RUN apk add --no-cache libpng-dev jpeg-dev giflib-dev pango-dev cairo-dev vips && \
+RUN apk add --no-cache libpng-dev jpeg-dev giflib-dev pango-dev cairo-dev vips chromium && \
     addgroup -g $DOCKER_GID eco-webserver && \
     adduser -G eco-webserver -D -H -h /opt/eco-webserver -u $DOCKER_UID eco-webserver
 
