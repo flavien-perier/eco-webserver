@@ -270,10 +270,6 @@ function evaluateHtmlFile(content, requestUrl) {
             virtualConsole,
             includeNodeLocations: true,
             runScripts: "outside-only",
-            resources: new jsdom.ResourceLoader({
-                userAgent: "internal-eco-webserver",
-                strictSSL: false,
-            }),
         });
 
         const vmContext = dom.getInternalVMContext();

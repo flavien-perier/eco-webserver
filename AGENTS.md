@@ -9,10 +9,11 @@
 
 ## Setup gotchas
 
-- `canvas` is a native dependency. Prebuilds only cover old Node ABI (CI pins Node 16); on current Node versions `npm install` compiles it from source and needs cairo/pango/jpeg/giflib dev headers (see the Dockerfile builder stage for the package list).
-- `sharp` (image → webp) is N-API: prebuilds work on Node 16 and current Node, but **no armv7 prebuild exists** — the arm/v7 Docker build compiles it from source, hence `vips-dev` in the builder stage and `vips` in the runtime image of the Dockerfile.
+- `canvas` 3.x is N-API based: prebuilds cover current Node ABIs, `npm install` no longer compiles from source. The build deps remain only in the Docker builder stage for `sharp` armv7 (see below).
+- `sharp` (image → webp) is N-API: prebuilds exist for glibc and musl on amd64/arm64, but **no armv7 prebuild** — the arm/v7 Docker build compiles it from source, hence `vips-dev` in the builder stage and `vips` in the runtime image of the Dockerfile.
 - `wawoff2` (font → woff2) is wasm-based, no native toolchain needed. It returns `Uint8Array`, wrapped in `Buffer` in `src/convertFont.js`.
-- `puppeteer-core` is pinned to 21.x (22+ requires Node 18) and downloads no browser: it launches the system chromium at `chromiumPath` (env `ECO_CHROMIUM_PATH`, autodetected among common `/usr/bin` paths). On this machine, `npm install` fails building `canvas`; after an `npm install --ignore-scripts`, delete the leftover unbuilt `node_modules/canvas` (an extracted-but-unbuilt canvas makes jsdom crash where an absent one degrades gracefully).
+- `puppeteer-core` downloads no browser: it launches the system chromium at `chromiumPath` (env `ECO_CHROMIUM_PATH`, autodetected among common `/usr/bin` paths).
+- `jsdom` 30 removed the `ResourceLoader` export — `evaluateHtmlFile` in `src/contentReader.js` loads and executes `<script>` sources manually in the jsdom VM context (no `resources` option).
 - `package-lock.json` is deliberately gitignored.
 
 ## Architecture
