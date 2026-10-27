@@ -12,7 +12,7 @@ FROM node:24-alpine
 
 LABEL org.opencontainers.image.title="eco-webserver" \
       org.opencontainers.image.description="eco webserver" \
-      org.opencontainers.image.version="1.0.13" \
+      org.opencontainers.image.version="2.0.0" \
       org.opencontainers.image.vendor="flavien.io" \
       org.opencontainers.image.maintainer="Flavien PERIER <perier@flavien.io>" \
       org.opencontainers.image.url="https://github.com/flavien-perier/eco-webserver" \

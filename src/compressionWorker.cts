@@ -2,11 +2,16 @@
 
 const { parentPort } = require("worker_threads");
 
-const { compressData } = require("./compressionPool.cts");
+const { gzipSync, brotliCompressSync, constants } = require("zlib");
 
 if (parentPort) {
     parentPort.on("message", message => {
-        const { gzipData, brotliData } = compressData(message);
+        const gzipData = gzipSync(message, { level: 4 });
+        const brotliData = brotliCompressSync(message, {
+            params: {
+                [constants.BROTLI_PARAM_QUALITY]: 4
+            }
+        });
 
         parentPort.postMessage({ gzipData, brotliData });
     });
