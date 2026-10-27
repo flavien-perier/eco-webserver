@@ -5,9 +5,9 @@ const proxyquire = require("proxyquire").noPreserveCache();
 const TEST_CACHE = "./tests/test-cache";
 
 const mockConfiguration = {
-    "./configuration": { default: { cacheDir: TEST_CACHE }, "@global": true }
+    "./configuration.cts": { default: { cacheDir: TEST_CACHE }, "@global": true }
 };
-const convertImage = proxyquire("../src/convertImage", mockConfiguration);
+const convertImage = proxyquire("../src/convertImage.cts", mockConfiguration);
 
 describe("convertImage", () => {
     beforeEach(() => {

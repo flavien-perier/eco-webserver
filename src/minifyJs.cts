@@ -2,8 +2,9 @@
 
 const { minify } = require("terser");
 
-const { writeProcessingCache, readProcessingCache } = require("./processingCache");
-const Logger = require("./Logger");
+const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
+const Logger = require("./Logger.cts");
+
 const logger = new Logger();
 
 /**
@@ -13,7 +14,7 @@ const logger = new Logger();
  * @param {string} hash
  * @returns {Promise<string>}
  */
-module.exports = async function minifyJs(inputJs, hash) {
+module.exports = async function minifyJs(inputJs: string, hash: string): Promise<string> {
     const cacheJs = readProcessingCache(hash, "js");
 
     if (cacheJs) {
@@ -23,7 +24,7 @@ module.exports = async function minifyJs(inputJs, hash) {
     let result;
 
     try {
-        result = await minify(inputJs, { 
+        result = await minify(inputJs, {
             mangle: false,
             compress: {
                 drop_console: true
@@ -32,7 +33,7 @@ module.exports = async function minifyJs(inputJs, hash) {
     } catch(err) {
         result = { error: err };
     }
-    
+
     let outputJs;
 
     if (result.error) {

@@ -2,7 +2,7 @@ const proxyquire = require("proxyquire").noPreserveCache();
 
 describe("getContentType", () => {
     const mockConfiguration = {
-        "./configuration": {
+        "./configuration.cts": {
             default: {
                 contentType: {
                     "text": "text/plain",
@@ -18,14 +18,14 @@ describe("getContentType", () => {
     };
 
     it("No extension", () => {
-        expect(proxyquire("../src/getContentType", mockConfiguration)("https://www.flavien.io/home")).toEqual("text/html");
+        expect(proxyquire("../src/getContentType.cts", mockConfiguration)("https://www.flavien.io/home")).toEqual("text/html");
     });
 
     it("Known extension", () => {
-        expect(proxyquire("../src/getContentType", mockConfiguration)("https://www.flavien.io/style.css")).toEqual("text/css");
+        expect(proxyquire("../src/getContentType.cts", mockConfiguration)("https://www.flavien.io/style.css")).toEqual("text/css");
     });
 
     it("Unknown extension", () => {
-        expect(proxyquire("../src/getContentType", mockConfiguration)("https://www.flavien.io/content.md")).toEqual("text/plain");
+        expect(proxyquire("../src/getContentType.cts", mockConfiguration)("https://www.flavien.io/content.md")).toEqual("text/plain");
     });
 });

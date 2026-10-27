@@ -38,4 +38,4 @@ EXPOSE 8080
 
 COPY --chown=eco-webserver:eco-webserver --chmod=750 --from=builder /opt/eco-webserver .
 
-CMD ./cli.js
+CMD ["./cli.cts"]

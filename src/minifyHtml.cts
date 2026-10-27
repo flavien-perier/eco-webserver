@@ -1,8 +1,8 @@
 "use strict";
 
-const minifyCss = require("./minifyCss");
-const minifyJs = require("./minifyJs");
-const { writeProcessingCache, readProcessingCache } = require("./processingCache");
+const minifyCss = require("./minifyCss.cts");
+const minifyJs = require("./minifyJs.cts");
+const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
 
 const COMMENT_MATCHER = /<!--.*?-->/gs;
 const BEGINNING_SAPCE_MATCHER = /^\s*/gm;
@@ -26,7 +26,7 @@ const DELETED_PARAMETERS = [
  * @param {string} hash
  * @returns {Promise<string>}
  */
-module.exports = async function minifyHtml(inputHtml, hash) {
+module.exports = async function minifyHtml(inputHtml: string, hash: string): Promise<string> {
     const cacheHtml = readProcessingCache(hash, "html");
 
     if (cacheHtml) {
@@ -41,8 +41,8 @@ module.exports = async function minifyHtml(inputHtml, hash) {
         // Reformatting html opening tags.
         .replace(OPENING_TAG_MATCHER, (_, baliseName, parameters, end) => {
             // Reformatting tags parameters.
-            const parametersList = [];
-            parameters.replace(KEY_VALUE_MATCHER, (_, key, value) => {
+            const parametersList: string[] = [];
+            parameters.replace(KEY_VALUE_MATCHER, (_, key: string, value: string) => {
                 if (value == null) parametersList.push(key);
                 else if (value == "\"\"" || value == "''" || value == "") {}
                 else if (DELETED_PARAMETERS.indexOf(`${baliseName}:${key}`) != -1) {}
@@ -56,7 +56,7 @@ module.exports = async function minifyHtml(inputHtml, hash) {
         // Removes blanks between tags.
         .replace(BLANK_SPACE_BETWEEN_TAGS_MATCHER, "><")
         // Reformatting css.
-        .replace(STYLE_TAG_MATCHER, (_, balise, code) => `${balise}${minifyCss(code)}</style>`);
+        .replace(STYLE_TAG_MATCHER, (_, balise, code) => `${balise}${minifyCss(code, hash)}</style>`);
 
     // Reformatting js.
     await new Promise((resolve, reject) => {
@@ -68,7 +68,7 @@ module.exports = async function minifyHtml(inputHtml, hash) {
         }
 
         scriptTags.map(scriptTag => new RegExp(SCRIPT_TAG_MATCHER).exec(scriptTag)).forEach(async ([fullMatch, balise, code]) => {
-            outputHtml = outputHtml.replace(fullMatch, `${balise}${await minifyJs(code || "")}</script>`);
+            outputHtml = outputHtml.replace(fullMatch, `${balise}${await minifyJs(code || "", hash)}</script>`);
             if (++countTasks >= scriptTags.length) {
                 resolve();
             }

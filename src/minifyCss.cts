@@ -1,6 +1,6 @@
 "use strict";
 
-const { writeProcessingCache, readProcessingCache } = require("./processingCache");
+const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
 
 const COMMENT_MATCHER = /\/\*.*?\*\//gs;
 const BEGINNING_SAPCE_MATCHER = /^\s*/gm;
@@ -16,7 +16,7 @@ const CLOSING_BRACES_MATCHER = /;?\s*}\s*/gm;
  * @param {string} hash
  * @returns {string}
  */
-module.exports = function minifyCss(inputCss, hash) {
+module.exports = function minifyCss(inputCss: string, hash: string): string {
     const cacheCss = readProcessingCache(hash, "css");
 
     if (cacheCss) {
@@ -38,6 +38,6 @@ module.exports = function minifyCss(inputCss, hash) {
         .replace(CLOSING_BRACES_MATCHER, "}");
 
     writeProcessingCache(outputCss, hash, "css");
-    
+
     return outputCss;
 }

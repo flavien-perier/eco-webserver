@@ -1,6 +1,6 @@
 const { brotliDecompressSync } = require("zlib");
 
-const brotliData = require("../src/brotliData");
+const brotliData = require("../src/brotliData.cts");
 
 describe("brotliData", () => {
     it("Element is lower after brotli and decompressable", () => {

@@ -2,12 +2,13 @@
 
 const { existsSync, readFileSync } = require("fs");
 const { join } = require("path");
+const { tmpdir } = require("os");
 
 const puppeteer = require("puppeteer-core");
 
-const configuration = require("./configuration").default;
-const getContentType = require("./getContentType");
-const Logger = require("./Logger");
+const configuration = require("./configuration.cts").default;
+const getContentType = require("./getContentType.cts");
+const Logger = require("./Logger.cts");
 
 const logger = new Logger();
 
@@ -16,7 +17,9 @@ const CHROMIUM_ARGS = [
     "--no-sandbox",
     "--disable-setuid-sandbox",
     "--disable-dev-shm-usage",
-    "--disable-gpu"
+    "--disable-gpu",
+    // Chromium run as a non-root user cannot create its user data directory.
+    `--user-data-dir=${join(tmpdir(), "eco-webserver-chromium")}`
 ];
 
 /**
@@ -31,14 +34,14 @@ let hasLoggedMissingChromium = false;
  *
  * @type {Promise<any> | null}
  */
-let browserPromise = null;
+let browserPromise: Promise<any> | null = null;
 
 /**
  * Returns the shared chromium browser instance.
  *
  * @returns {Promise<any>}
  */
-async function getBrowser() {
+async function getBrowser(): Promise<any> {
     if (!browserPromise) {
         browserPromise = puppeteer.launch({
             executablePath: CHROMIUM_PATH,
@@ -61,7 +64,7 @@ async function getBrowser() {
  * @param {string} requestUrl
  * @returns {Promise<string | null>}
  */
-module.exports = async function renderChromium(content, requestUrl) {
+module.exports = async function renderChromium(content: string, requestUrl: string): Promise<string | null> {
     if (!CHROMIUM_PATH || !existsSync(CHROMIUM_PATH)) {
         if (!hasLoggedMissingChromium) {
             hasLoggedMissingChromium = true;

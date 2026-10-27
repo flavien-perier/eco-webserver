@@ -2,8 +2,9 @@
 
 const sharp = require("sharp");
 
-const { writeProcessingCache, readProcessingCache } = require("./processingCache");
-const Logger = require("./Logger");
+const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
+const Logger = require("./Logger.cts");
+
 const logger = new Logger();
 
 /**
@@ -13,7 +14,7 @@ const logger = new Logger();
  * @param {string} hash
  * @returns {Promise<Buffer | null>}
  */
-module.exports = async function convertImage(inputImage, hash) {
+module.exports = async function convertImage(inputImage: Buffer, hash: string): Promise<Buffer | null> {
     const cacheImage = readProcessingCache(hash, "webp");
 
     if (cacheImage) {

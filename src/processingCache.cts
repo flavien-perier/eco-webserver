@@ -3,16 +3,17 @@
 const { existsSync, readFileSync, writeFileSync, mkdirSync } = require("fs");
 const { join } = require("path");
 
-const configuration = require("./configuration").default;
+const configuration = require("./configuration.cts").default;
 
 /**
  * Pushes a treatment into the cache.
  *
  * @param {string | Buffer} afterProcessing
  * @param {string} hash
- * @returns {void}
+ * @param {string} fileFormat
+ * @returns {Promise<void>}
  */
-async function writeProcessingCache(afterProcessing, hash, fileFormat) {
+async function writeProcessingCache(afterProcessing: string | Buffer, hash: string, fileFormat: string): Promise<void> {
     const cacheLocation = fileCacheDir(hash, fileFormat);
 
     if (!existsSync(configuration.cacheDir)) {
@@ -29,7 +30,7 @@ async function writeProcessingCache(afterProcessing, hash, fileFormat) {
  * @param {string} fileFormat
  * @returns {Buffer | null}
  */
-function readProcessingCache(hash, fileFormat) {
+function readProcessingCache(hash: string, fileFormat: string): Buffer | null {
     const cacheLocation = fileCacheDir(hash, fileFormat);
 
     if (!existsSync(cacheLocation)) {
@@ -42,11 +43,11 @@ function readProcessingCache(hash, fileFormat) {
 /**
  * Gives the location of the cached file.
  *
- * @param {string | Buffer} hash
+ * @param {string} hash
  * @param {string} fileFormat
  * @returns {string}
  */
-function fileCacheDir(hash, fileFormat) {
+function fileCacheDir(hash: string, fileFormat: string): string {
     return join(configuration.cacheDir, `${hash}.${fileFormat}`);
 }
 

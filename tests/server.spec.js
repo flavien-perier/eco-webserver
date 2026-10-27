@@ -34,7 +34,7 @@ const requestRaw = (server, path, headers) => new Promise((resolve, reject) => {
 describe("server", () => {
     describe("Simple configuration", () => {
         const mockConfiguration = {
-            "./configuration": {
+            "./configuration.cts": {
                 default: {
                     port: 8080,
                     cacheCycle: 1800,
@@ -75,7 +75,7 @@ describe("server", () => {
         });
 
         it("Should display a page", done => {
-            supertest(proxyquire("../src/server", mockConfiguration)())
+            supertest(proxyquire("../src/server.cts", mockConfiguration)())
                 .get("/")
                 .expect(200)
                 .expect("Content-Type", "text/html")
@@ -95,7 +95,7 @@ describe("server", () => {
         });
 
         it("Should display a minified svg", done => {
-            supertest(proxyquire("../src/server", mockConfiguration)())
+            supertest(proxyquire("../src/server.cts", mockConfiguration)())
                 .get("/test.svg")
                 .expect(200)
                 .expect("Content-Type", "image/svg+xml")
@@ -110,7 +110,7 @@ describe("server", () => {
         });
 
         it("Should display a page with a redirection", done => {
-            supertest(proxyquire("../src/server", mockConfiguration)())
+            supertest(proxyquire("../src/server.cts", mockConfiguration)())
                 .get("/redirection")
                 .expect(200)
                 .expect("Content-Type", "text/html")
@@ -130,7 +130,7 @@ describe("server", () => {
         });
 
         it("Should display a page with a custom header", done => {
-            supertest(proxyquire("../src/server", mockConfiguration)())
+            supertest(proxyquire("../src/server.cts", mockConfiguration)())
                 .get("/")
                 .expect(200)
                 .expect("Content-Type", "text/html")
@@ -153,7 +153,7 @@ describe("server", () => {
         it("Should display a page with etag", done => {
             const etag = "d68ffeb0ba128b157bc38ed5620b0a2f66bf792d465b43b99d83d8e33571364b";
 
-            supertest(proxyquire("../src/server", mockConfiguration)())
+            supertest(proxyquire("../src/server.cts", mockConfiguration)())
                 .get("/")
                 .expect(200)
                 .expect("Content-Type", "text/html")
@@ -170,7 +170,7 @@ describe("server", () => {
                             </body>
                         </html>`);
 
-                        supertest(proxyquire("../src/server", mockConfiguration)())
+                        supertest(proxyquire("../src/server.cts", mockConfiguration)())
                             .get("/redirection")
                             .set("If-None-Match", etag)
                             .expect(304)
@@ -186,7 +186,7 @@ describe("server", () => {
 
     describe("Configuration with 404", () => {
         const mockConfiguration = {
-            "./configuration": {
+            "./configuration.cts": {
                 default: {
                     port: 8080,
                     cacheCycle: 1800,
@@ -217,7 +217,7 @@ describe("server", () => {
         });
 
         it("Should display a page with 404", done => {
-            supertest(proxyquire("../src/server", mockConfiguration)())
+            supertest(proxyquire("../src/server.cts", mockConfiguration)())
                 .get("/redirection")
                 .expect(404)
                 .expect("Content-Type", "text/html")
@@ -241,7 +241,7 @@ describe("server", () => {
         const SANDBOX_DIR = "./tests/testDist/sandbox";
 
         const mockConfiguration = {
-            "./configuration": {
+            "./configuration.cts": {
                 default: {
                     port: 8080,
                     cacheCycle: 10,
@@ -290,7 +290,7 @@ describe("server", () => {
                     </body>
                 </html>`);
 
-            const server = proxyquire("../src/server", mockConfiguration)();
+            const server = proxyquire("../src/server.cts", mockConfiguration)();
 
             supertest(server)
                 .get("/")
@@ -337,7 +337,7 @@ describe("server", () => {
 
     describe("Configuration with isomorphic", () => {
         const mockConfiguration = {
-            "./configuration": {
+            "./configuration.cts": {
                 default: {
                     port: 8080,
                     cacheCycle: 1800,
@@ -370,7 +370,7 @@ describe("server", () => {
         });
 
         it("Should load JavaScript in the page", done => {
-            supertest(proxyquire("../src/server", mockConfiguration)())
+            supertest(proxyquire("../src/server.cts", mockConfiguration)())
                 .get("/")
                 .expect(200)
                 .expect("Content-Type", "text/html")
@@ -400,7 +400,7 @@ describe("server", () => {
         const TEST_PORT = 9999;
 
         const mockConfiguration = {
-            "./configuration": {
+            "./configuration.cts": {
                 default: {
                     port: 8080,
                     cacheCycle: 1800,
@@ -453,7 +453,7 @@ describe("server", () => {
         });
 
         it("Should display a remote base path through the proxy", done => {
-            supertest(proxyquire("../src/server", mockConfiguration)())
+            supertest(proxyquire("../src/server.cts", mockConfiguration)())
                 .get("/test")
                 .expect(200)
                 .expect("Content-Type", "text/html")
@@ -465,7 +465,7 @@ describe("server", () => {
         });
 
         it("Should display a remote resource through the proxy", done => {
-            supertest(proxyquire("../src/server", mockConfiguration)())
+            supertest(proxyquire("../src/server.cts", mockConfiguration)())
                 .get("/test/path")
                 .expect(200)
                 .expect("Content-Type", "text/html")
@@ -479,7 +479,7 @@ describe("server", () => {
 
     describe("Configuration with conversions and compressions", () => {
         const mockConfiguration = {
-            "./configuration": {
+            "./configuration.cts": {
                 default: {
                     port: 8080,
                     cacheCycle: 1800,
@@ -513,7 +513,7 @@ describe("server", () => {
 
         beforeAll(done => {
             fs.mkdirSync(TEST_CACHE);
-            server = proxyquire("../src/server", mockConfiguration)();
+            server = proxyquire("../src/server.cts", mockConfiguration)();
             server.listen(0, null, null, done);
         });
 

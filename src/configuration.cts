@@ -3,6 +3,8 @@
 const { existsSync, copyFileSync } = require("fs");
 const { join } = require("path");
 
+import type { Configuration } from "./types.cts";
+
 const CONF_DIR = join(process.cwd(), "ecoconf.js");
 
 if (!existsSync(CONF_DIR)) {
@@ -21,14 +23,14 @@ const CHROMIUM_CANDIDATES = [
 ];
 const DEFAULT_CHROMIUM_PATH = CHROMIUM_CANDIDATES.find(path => existsSync(path)) || null;
 
-exports.default = {
+module.exports.default = {
     /**
-     * @type {number}
+     * @type {string | number}
      */
     port: process.env.ECO_PORT || ecoconf.port || 8080,
 
     /**
-     * @type {number}
+     * @type {string | number}
      */
     cacheCycle: process.env.ECO_CACHE_CYCLE || ecoconf.cacheCycle || 1800,
 
@@ -58,12 +60,12 @@ exports.default = {
     chromiumPath: process.env.ECO_CHROMIUM_PATH || ecoconf.chromiumPath || DEFAULT_CHROMIUM_PATH,
 
     /**
-     * @type {{[string]: string}}
+     * @type {{[name: string]: string}}
      */
     header: ecoconf.header || {},
 
     /**
-     * @type {{[string]: string}}
+     * @type {import("./types.cts").ContentTypeMap}
      */
     contentType: {
         ...require("./contentType.json"),
@@ -71,7 +73,7 @@ exports.default = {
     },
 
     /**
-     * @type {{[string]: string}}
+     * @type {{[urlPrefix: string]: string}}
      */
     proxy: ecoconf.proxy || {},
 
@@ -79,4 +81,4 @@ exports.default = {
      * @type {boolean}
      */
     use404File: existsSync(join(DIST_DIR, "404.html"))
-};
+} as Configuration;

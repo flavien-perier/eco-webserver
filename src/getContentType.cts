@@ -1,6 +1,6 @@
 "use strict";
 
-const configuration = require("./configuration").default;
+const configuration = require("./configuration.cts").default;
 
 /**
  * Gives the "content-type" of a resource according to its extension.
@@ -8,7 +8,7 @@ const configuration = require("./configuration").default;
  * @param {string} filePath
  * @returns {string}
  */
-module.exports = function getContentType(filePath) {
+module.exports = function getContentType(filePath: string): string {
     const parsing = /\.([a-zA-Z0-9]+)$/.exec(filePath);
 
     if (!parsing) {

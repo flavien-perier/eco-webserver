@@ -1,7 +1,7 @@
 const { createHash } = require("crypto");
 const { unzipSync } = require("zlib");
 
-const gzipData = require("../src/gzipData");
+const gzipData = require("../src/gzipData.cts");
 
 describe("gzipData", () => {
     it("Element is lower after gzip and unzippable", () => {

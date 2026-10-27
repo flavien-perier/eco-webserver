@@ -1,6 +1,6 @@
 "use strict";
 
-const configuration = require("./configuration").default;
+const configuration = require("./configuration.cts").default;
 
 /**
  * Builds the response header.
@@ -8,10 +8,10 @@ const configuration = require("./configuration").default;
  * @param {string} contentType
  * @param {"br" | "gzip" | false} encoding
  * @param {string} etag
- * @returns {{[string]: string}}
+ * @returns {{[header: string]: string}}
  */
-module.exports = function buildHeader(contentType, encoding, etag) {
-    const header = {
+module.exports = function buildHeader(contentType: string, encoding: "br" | "gzip" | false, etag: string): { [header: string]: string } {
+    const header: { [header: string]: string } = {
         ...configuration.header,
         "Content-Type": contentType,
     };

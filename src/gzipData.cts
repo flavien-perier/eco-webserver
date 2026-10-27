@@ -8,7 +8,7 @@ const { gzipSync } = require("zlib");
  * @param {any} data
  * @returns {Buffer}
  */
-module.exports = function gzipData(data) {
+module.exports = function gzipData(data: any): Buffer {
     return gzipSync(data, {
         level: 4
     });

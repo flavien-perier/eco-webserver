@@ -11,26 +11,26 @@ const { createHash } = require("crypto");
 const jsdom = require("jsdom");
 const { Script } = require("vm");
 
-const configuration = require("./configuration").default;
-const getContentType = require("./getContentType");
-const minifyHtml = require("./minifyHtml");
-const minifyCss = require("./minifyCss");
-const minifyJs = require("./minifyJs");
-const minifyJson = require("./minifyJson");
-const minifySvg = require("./minifySvg");
-const minifyXml = require("./minifyXml");
-const convertImage = require("./convertImage");
-const convertFont = require("./convertFont");
-const renderChromium = require("./renderChromium");
-const gzipData = require("./gzipData");
-const brotliData = require("./brotliData");
-const Logger = require("./Logger");
+const configuration = require("./configuration.cts").default;
+const getContentType = require("./getContentType.cts");
+const minifyHtml = require("./minifyHtml.cts");
+const minifyCss = require("./minifyCss.cts");
+const minifyJs = require("./minifyJs.cts");
+const minifyJson = require("./minifyJson.cts");
+const minifySvg = require("./minifySvg.cts");
+const minifyXml = require("./minifyXml.cts");
+const convertImage = require("./convertImage.cts");
+const convertFont = require("./convertFont.cts");
+const renderChromium = require("./renderChromium.cts");
+const gzipData = require("./gzipData.cts");
+const brotliData = require("./brotliData.cts");
+const Logger = require("./Logger.cts");
 
 const logger = new Logger();
 
 const virtualConsole = new jsdom.VirtualConsole();
 
-const TXT_CONETENT_TYPE = [
+const TXT_CONETENT_TYPE: string[] = [
     configuration.contentType.html,
     configuration.contentType.css,
     configuration.contentType.js,
@@ -38,7 +38,7 @@ const TXT_CONETENT_TYPE = [
     configuration.contentType.svg,
     configuration.contentType.xml
 ];
-const WEBP_CONVERSION_CONTENT_TYPE = [
+const WEBP_CONVERSION_CONTENT_TYPE: string[] = [
     configuration.contentType.png,
     configuration.contentType.jpg,
     configuration.contentType.jpeg,
@@ -46,11 +46,11 @@ const WEBP_CONVERSION_CONTENT_TYPE = [
     configuration.contentType.tif,
     configuration.contentType.tiff
 ];
-const WOFF2_CONVERSION_CONTENT_TYPE = [
+const WOFF2_CONVERSION_CONTENT_TYPE: string[] = [
     configuration.contentType.ttf,
     configuration.contentType.otf
 ];
-const CONVERTIBLE_CONTENT_TYPE = [...WEBP_CONVERSION_CONTENT_TYPE, ...WOFF2_CONVERSION_CONTENT_TYPE];
+const CONVERTIBLE_CONTENT_TYPE: string[] = [...WEBP_CONVERSION_CONTENT_TYPE, ...WOFF2_CONVERSION_CONTENT_TYPE];
 const MAX_TTL = 10;
 
 /**
@@ -59,20 +59,20 @@ const MAX_TTL = 10;
  * @param {string | Buffer} data
  * @returns {string}
  */
-const sha256Hex = data => createHash("sha256").update(data || "").digest("hex");
+const sha256Hex = (data: string | Buffer): string => createHash("sha256").update(data || "").digest("hex");
 
 /**
  * Associates a URL with its content in the cache.
  *
  * @type {Map<string, CacheValue>}
  */
-const cache = new Map();
+const cache = new Map<string, CacheValue>();
 
 /**
  * Cleans at regular time intervals cache resources that have not been accessed for a long time.
  */
-setInterval(() => {
-    cache.forEach((value, key, cache) => {
+setInterval((): void => {
+    cache.forEach((value: CacheValue, key: string, cache: Map<string, CacheValue>) => {
         if (value.ttl <= 0) {
             cache.delete(key);
         } else if (value.ttl > MAX_TTL) {
@@ -81,48 +81,19 @@ setInterval(() => {
             value.ttl--;
         }
     });
-}, configuration.cacheCycle * 1000);
+}, Number(configuration.cacheCycle) * 1000);
 
 /**
  * Content of a cached resource.
  */
 class CacheValue {
-    constructor() {
-        /**
-         * @type {string | Buffer}
-         */
-        this.data;
-
-        /**
-         * @type {"txt" | "bin"}
-         */
-        this.dataType;
-
-        /**
-         * @type {number}
-         */
-        this.ttl;
-
-        /**
-         * @type {Buffer}
-         */
-        this.gzipData;
-
-        /**
-         * @type {Buffer}
-         */
-        this.brotliData;
-
-        /**
-         * @type {string}
-         */
-        this.contentType;
-
-        /**
-         * @type {String}
-         */
-        this.hash;
-    }
+    data: string | Buffer;
+    dataType: "txt" | "bin";
+    ttl: number;
+    gzipData: Buffer;
+    brotliData: Buffer;
+    contentType: string;
+    hash: string;
 
     /**
      * Caching a local file.
@@ -132,7 +103,7 @@ class CacheValue {
      * @param {string} contentType
      * @returns {Promise<void>}
      */
-    async localFile(filePath, requestUrl, contentType) {
+    async localFile(filePath: string, requestUrl: string, contentType: string): Promise<void> {
         this.contentType = contentType;
 
         if (CONVERTIBLE_CONTENT_TYPE.indexOf(contentType) !== -1) {
@@ -190,8 +161,8 @@ class CacheValue {
      * @param {string} requestUrl
      * @returns {Promise<void>}
      */
-    async proxyFile(requestUrl) {
-        const buffer = await new Promise((resolve, reject) => {
+    async proxyFile(requestUrl: string): Promise<void> {
+        const buffer = await new Promise((resolve: (buffer: Buffer) => void, reject) => {
             const requestBaseUrl = Object.keys(configuration.proxy).filter(key => key === requestUrl.substr(0, key.length))[0];
             const proxyBaseUrl = configuration.proxy[requestBaseUrl];
 
@@ -235,7 +206,7 @@ class CacheValue {
  * @param {string} contentType
  * @returns {Promise<{data: Buffer, contentType: string}>}
  */
-async function convertResource(data, contentType) {
+async function convertResource(data: Buffer, contentType: string): Promise<{ data: Buffer; contentType: string }> {
     if (WEBP_CONVERSION_CONTENT_TYPE.indexOf(contentType) !== -1) {
         const webpData = await convertImage(data, sha256Hex(data));
 
@@ -260,8 +231,8 @@ async function convertResource(data, contentType) {
  * @param {string} requestUrl
  * @returns {Promise<string>}
  */
-function evaluateHtmlFile(content, requestUrl) {
-    return new Promise((resolve, reject) => {
+function evaluateHtmlFile(content: string, requestUrl: string): Promise<string> {
+    return new Promise((resolve: (html: string) => void, reject) => {
         // Declares a virtual DOM.
         const dom = new jsdom.JSDOM(content, {
             url: `http://127.0.0.1:${configuration.port}${requestUrl}`,
@@ -279,7 +250,7 @@ function evaluateHtmlFile(content, requestUrl) {
          *
          * @param {string} scriptTxt
          */
-        const executeScript = (scriptTxt) => {
+        const executeScript = (scriptTxt: string): void => {
             try {
                 new Script(scriptTxt).runInContext(vmContext);
             } catch(err) {
@@ -316,7 +287,7 @@ function evaluateHtmlFile(content, requestUrl) {
         let increment = 0;
         let lastComputedHtmlMd5 = "";
 
-        const loop = setInterval(() => {
+        const loop = setInterval((): void => {
             const computedHtml = dom.serialize();
             const computedHtmlMd5 = createHash("md5").update(computedHtml).digest("hex");
 
@@ -339,11 +310,11 @@ function evaluateHtmlFile(content, requestUrl) {
  * @param {string} contentType
  * @returns {Promise<CacheValue>}
  */
-async function readFile(filePath, requestUrl, contentType) {
+async function readFile(filePath: string, requestUrl: string, contentType: string): Promise<CacheValue> {
     /**
      * @type {CacheValue}
      */
-    let cacheValue;
+    let cacheValue: CacheValue;
 
     if (cache.has(requestUrl)) {
         cacheValue = cache.get(requestUrl);
@@ -363,11 +334,11 @@ async function readFile(filePath, requestUrl, contentType) {
  * @param {string} requestUrl
  * @returns {Promise<CacheValue>}
  */
-async function readProxy(requestUrl) {
+async function readProxy(requestUrl: string): Promise<CacheValue> {
     /**
      * @type {CacheValue}
      */
-    let cacheValue;
+    let cacheValue: CacheValue;
 
     if (cache.has(requestUrl)) {
         cacheValue = cache.get(requestUrl);

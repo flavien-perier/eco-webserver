@@ -2,8 +2,9 @@
 
 const { optimize } = require("svgo");
 
-const { writeProcessingCache, readProcessingCache } = require("./processingCache");
-const Logger = require("./Logger");
+const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
+const Logger = require("./Logger.cts");
+
 const logger = new Logger();
 
 /**
@@ -13,7 +14,7 @@ const logger = new Logger();
  * @param {string} hash
  * @returns {string}
  */
-module.exports = function minifySvg(inputSvg, hash) {
+module.exports = function minifySvg(inputSvg: string, hash: string): string {
     const cacheSvg = readProcessingCache(hash, "svg");
 
     if (cacheSvg) {

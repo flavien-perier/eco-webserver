@@ -4,9 +4,9 @@ const proxyquire = require("proxyquire").noPreserveCache();
 const TEST_CACHE = "./tests/test-cache";
 
 const mockConfiguration = {
-    "./configuration": { default: { cacheDir: TEST_CACHE }, "@global": true }
+    "./configuration.cts": { default: { cacheDir: TEST_CACHE }, "@global": true }
 };
-const convertFont = proxyquire("../src/convertFont", mockConfiguration);
+const convertFont = proxyquire("../src/convertFont.cts", mockConfiguration);
 
 describe("convertFont", () => {
     beforeEach(() => {

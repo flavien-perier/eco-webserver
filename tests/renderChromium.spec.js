@@ -90,7 +90,7 @@ describe("renderChromium", () => {
      * @returns {Object}
      */
     const mockConfiguration = chromiumPath => ({
-        "./configuration": {
+        "./configuration.cts": {
             default: {
                 port: 8080,
                 cacheCycle: 1800,
@@ -132,7 +132,7 @@ describe("renderChromium", () => {
                 return browser;
             }
         };
-        const renderChromium = proxyquire("../src/renderChromium", {
+        const renderChromium = proxyquire("../src/renderChromium.cts", {
             "puppeteer-core": puppeteer,
             ...mockConfiguration("/usr/bin/env")
         });
@@ -165,7 +165,7 @@ describe("renderChromium", () => {
                 launchCount++;
             }
         };
-        const renderChromium = proxyquire("../src/renderChromium", {
+        const renderChromium = proxyquire("../src/renderChromium.cts", {
             "puppeteer-core": puppeteer,
             ...mockConfiguration("/usr/bin/not-found-chromium")
         });
@@ -180,7 +180,7 @@ describe("renderChromium", () => {
                 throw new Error("launch error");
             }
         };
-        const renderChromium = proxyquire("../src/renderChromium", {
+        const renderChromium = proxyquire("../src/renderChromium.cts", {
             "puppeteer-core": puppeteer,
             ...mockConfiguration("/usr/bin/env")
         });

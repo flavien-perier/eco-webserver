@@ -1,0 +1,43 @@
+"use strict";
+
+/**
+ * Map associating a file extension with its content-type.
+ */
+export interface ContentTypeMap {
+    [extension: string]: string;
+}
+
+/**
+ * Configuration of the eco-webserver application.
+ */
+export interface Configuration {
+    port: string | number;
+    cacheCycle: string | number;
+    distDir: string;
+    cacheDir: string;
+    logDir: string;
+    enableIsomorphic: boolean;
+    chromiumPath: string | null;
+    header: { [name: string]: string };
+    contentType: ContentTypeMap;
+    proxy: { [urlPrefix: string]: string };
+    use404File: boolean;
+}
+
+/**
+ * Request sent to a text worker.
+ */
+export interface WorkerRequest {
+    id: number;
+    action: string;
+    payload: string;
+}
+
+/**
+ * Response of a text worker.
+ */
+export interface WorkerResponse {
+    id: number;
+    data?: string | Buffer;
+    error?: string;
+}

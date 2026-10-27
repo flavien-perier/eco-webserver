@@ -1,7 +1,8 @@
 "use strict";
 
-const { writeProcessingCache, readProcessingCache } = require("./processingCache");
-const Logger = require("./Logger");
+const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
+const Logger = require("./Logger.cts");
+
 const logger = new Logger();
 
 /**
@@ -11,14 +12,14 @@ const logger = new Logger();
  * @param {string} hash
  * @returns {string}
  */
-module.exports = function minifyJs(inputJson, hash) {
+module.exports = function minifyJson(inputJson: string, hash: string): string {
     const cacheJson = readProcessingCache(hash, "json");
 
     if (cacheJson) {
         return cacheJson.toString();
     }
 
-    let outputJson;
+    let outputJson: string;
 
     try {
         outputJson = JSON.stringify(JSON.parse(inputJson));

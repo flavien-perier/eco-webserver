@@ -2,8 +2,9 @@
 
 const wawoff2 = require("wawoff2");
 
-const { writeProcessingCache, readProcessingCache } = require("./processingCache");
-const Logger = require("./Logger");
+const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
+const Logger = require("./Logger.cts");
+
 const logger = new Logger();
 
 /**
@@ -13,7 +14,7 @@ const logger = new Logger();
  * @param {string} hash
  * @returns {Promise<Buffer | null>}
  */
-module.exports = async function convertFont(inputFont, hash) {
+module.exports = async function convertFont(inputFont: Buffer, hash: string): Promise<Buffer | null> {
     const cacheFont = readProcessingCache(hash, "woff2");
 
     if (cacheFont) {

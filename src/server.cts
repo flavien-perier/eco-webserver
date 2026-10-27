@@ -5,11 +5,11 @@ const http = require("http");
 const { existsSync, lstatSync } = require("fs");
 const { join } = require("path");
 
-const configuration = require("./configuration").default;
-const buildHeader = require("./buildHeader");
-const getContentType = require("./getContentType");
-const { readFile, readProxy } = require("./contentReader");
-const Logger = require("./Logger");
+const configuration = require("./configuration.cts").default;
+const buildHeader = require("./buildHeader.cts");
+const getContentType = require("./getContentType.cts");
+const { readFile, readProxy } = require("./contentReader.cts");
+const Logger = require("./Logger.cts");
 
 const logger = new Logger();
 
@@ -18,7 +18,7 @@ const logger = new Logger();
  *
  * @returns {http.Server}
  */
-module.exports = () => {
+module.exports = (): http.Server => {
     return http.createServer(async (req, res) => {
         logger.http(req.headers["x-real-ip"] || req.connection.remoteAddress, req.headers["user-agent"], req.method, req.url);
 

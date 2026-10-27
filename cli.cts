@@ -1,9 +1,10 @@
 #!/usr/bin/env node
+"use strict";
 
-const server = require("./src/server");
+const server = require("./src/server.cts");
 
-const Logger = require("./src/Logger");
-const configuration = require("./src/configuration").default;
+const Logger = require("./src/Logger.cts");
+const configuration = require("./src/configuration.cts").default;
 
 const logger = new Logger();
 

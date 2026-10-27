@@ -4,9 +4,9 @@ const proxyquire = require("proxyquire").noPreserveCache();
 const TEST_CACHE = "./tests/test-cache";
 
 const mockConfiguration = {
-    "./configuration": { default: { cacheDir: TEST_CACHE }, "@global": true }
+    "./configuration.cts": { default: { cacheDir: TEST_CACHE }, "@global": true }
 };
-const minifySvg = proxyquire("../src/minifySvg", mockConfiguration);
+const minifySvg = proxyquire("../src/minifySvg.cts", mockConfiguration);
 
 describe("minifySvg", () => {
     afterEach(() => {

@@ -1,7 +1,6 @@
 "use strict";
 
-const { brotliCompressSync } = require("zlib");
-const { BROTLI_PARAM_QUALITY } = require("zlib").constants;
+const { brotliCompressSync, constants } = require("zlib");
 
 /**
  * Compresses a resource with the `brotli` algorithm.
@@ -9,10 +8,10 @@ const { BROTLI_PARAM_QUALITY } = require("zlib").constants;
  * @param {any} data
  * @returns {Buffer}
  */
-module.exports = function brotliData(data) {
+module.exports = function brotliData(data: any): Buffer {
     return brotliCompressSync(data, {
         params: {
-            [BROTLI_PARAM_QUALITY]: 4
+            [constants.BROTLI_PARAM_QUALITY]: 4
         }
     });
 }

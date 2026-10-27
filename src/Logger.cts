@@ -2,20 +2,19 @@
 
 const { appendFileSync } = require("fs");
 
-const configuration = require("./configuration").default;
+const configuration = require("./configuration.cts").default;
 
 /**
  * Contains logs that have not yet been written to the log file.
- * 
- * @type {Array<string>}
+ *
+ * @type {string[]}
  */
-let logBuffer = [];
-
+let logBuffer: string[] = [];
 
 /**
  * Empty the log buffer at regular time interval in the log file.
  */
-setInterval(() => {
+setInterval((): void => {
     logBuffer.forEach(message => appendFileSync(configuration.logDir, message + "\n"));
     logBuffer = [];
 }, 60 * 1000);
@@ -26,7 +25,7 @@ setInterval(() => {
  * @param {string} logLevel
  * @param {string} logMessage
  */
-function print(logLevel, logMessage) {
+function print(logLevel: string, logMessage: string): void {
     const message = `${logLevel}: [${new Date().toISOString()}] ${logMessage}`;
     console.log(message);
     logBuffer.push(message);
@@ -42,8 +41,9 @@ module.exports = class Logger {
      * Format a log to display a piece of information.
      *
      * @param {string} message
+     * @returns {void}
      */
-    info(message) {
+    info(message: string): void {
         print("info", message);
     }
 
@@ -52,8 +52,9 @@ module.exports = class Logger {
      *
      * @param {string} message
      * @param {any} error
+     * @returns {void}
      */
-    error(message, error) {
+    error(message: string, error?: any): void {
         print("error", message);
         if (error) {
             console.error(error);
@@ -67,8 +68,9 @@ module.exports = class Logger {
      * @param {string} userAgent
      * @param {string} method
      * @param {string} url
+     * @returns {void}
      */
-    http(ip, userAgent, method, url) {
+    http(ip: string, userAgent: string, method: string, url: string): void {
         print("http", `[${ip}] [${userAgent}] - ${method}: ${url}`);
     }
 }

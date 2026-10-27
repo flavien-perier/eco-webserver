@@ -1,6 +1,6 @@
 "use strict";
 
-const { writeProcessingCache, readProcessingCache } = require("./processingCache");
+const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
 
 const COMMENT_MATCHER = /<!--.*?-->/gs;
 const SPACE_BETWEEN_TAGS_MATCHER = />\s+</gs;
@@ -14,7 +14,7 @@ const MULTIPLE_SPACE_MATCHER = / {2,}/g;
  * @param {string} hash
  * @returns {string}
  */
-module.exports = function minifyXml(inputXml, hash) {
+module.exports = function minifyXml(inputXml: string, hash: string): string {
     const cacheXml = readProcessingCache(hash, "xml");
 
     if (cacheXml) {

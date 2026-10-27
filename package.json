@@ -16,9 +16,9 @@
   "engines": {
     "node": ">=24"
   },
-  "main": "cli.js",
+  "main": "cli.cts",
   "bin": {
-    "eco-webserver": "./cli.js"
+    "eco-webserver": "./cli.cts"
   },
   "scripts": {
     "test": "jasmine --config=jasmine.json"
