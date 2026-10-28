@@ -465,6 +465,9 @@ describe("server", () => {
             if (req.url === "/path") {
                 res.writeHead(200);
                 res.write("test path");
+            } else if (req.url === "/error") {
+                res.writeHead(418, { "Content-Type": "text/plain; charset=utf-8" });
+                res.write("upstream error");
             } else {
                 res.writeHead(200);
                 res.write("base path");
@@ -500,6 +503,28 @@ describe("server", () => {
                 .end((err, res) => {
                     expect(err).toBeNull();
                     expect(res.text).toEqual("test path");
+                    done();
+                });
+        });
+
+        it("Should propagate the upstream status and content type", done => {
+            supertest(proxyquire("../src/server.cts", mockConfiguration)())
+                .get("/test/error")
+                .expect(418)
+                .expect("Content-Type", "text/plain; charset=utf-8")
+                .end((err, res) => {
+                    expect(err).toBeNull();
+                    expect(res.text).toEqual("upstream error");
+                    done();
+                });
+        });
+
+        it("Should not allow the request suffix to change the upstream host", done => {
+            supertest(proxyquire("../src/server.cts", mockConfiguration)())
+                .get("/test@127.0.0.1:9998/")
+                .expect(200)
+                .end(err => {
+                    expect(err).toBeNull();
                     done();
                 });
         });

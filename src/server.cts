@@ -114,6 +114,7 @@ module.exports = (): http.Server => {
 
             if (proxyPrefix) {
                 content = await readProxy(requestUrl);
+                statusCode = content.statusCode;
             } else if (await isFile(filePath)) {
                 const contentType = getContentType(requestPath);
                 content = await readFile(requestPath, requestPath, contentType);

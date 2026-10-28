@@ -1,10 +1,6 @@
 "use strict";
 
-const http = require("http");
-const https = require("https");
-
 const { readFile: readFileFromDisk, stat } = require("fs/promises");
-const { parse } = require("url");
 const { resolve, sep } = require("path");
 const { createHash } = require("crypto");
 
@@ -23,6 +19,7 @@ const convertImage = require("./convertImage.cts");
 const convertFont = require("./convertFont.cts");
 const renderChromium = require("./renderChromium.cts");
 const { CompressionPool } = require("./compressionPool.cts");
+const requestBuffer = require("./httpRequest.cts");
 const Logger = require("./Logger.cts");
 
 const logger = new Logger();
@@ -64,6 +61,9 @@ const MAX_TTL = 10;
 const CACHE_MAX_ENTRIES = Math.max(1, Number(process.env.ECO_CACHE_MAX_ENTRIES || configuration.cacheMaxEntries) || 1000);
 const CACHE_MAX_SIZE = Math.max(1, Number(process.env.ECO_CACHE_MAX_SIZE || configuration.cacheMaxSize) || 100 * 1024 * 1024);
 const CACHE_VALIDATION_INTERVAL = Math.max(1, Number(configuration.cacheValidationInterval) || 60 * 1000);
+const PROXY_TIMEOUT = Math.max(1, Number(process.env.ECO_PROXY_TIMEOUT || configuration.proxyTimeout) || 10000);
+const PROXY_MAX_SIZE = Math.max(1, Number(process.env.ECO_PROXY_MAX_SIZE || configuration.proxyMaxSize) || 50 * 1024 * 1024);
+const SCRIPT_TIMEOUT = Math.max(1, Number(configuration.scriptTimeout) || 1000);
 
 /**
  * Calculates the sha256 sum of a resource.
@@ -84,6 +84,27 @@ function resolveLocalPath(filePath: string): string {
     const localPath = resolve(distDir, `.${filePath.startsWith("/") ? filePath : `/${filePath}`}`);
     if (localPath !== distDir && !localPath.startsWith(distDir + sep)) throw new Error("Invalid resource path");
     return localPath;
+}
+
+/**
+ * Builds an upstream URL while preserving the configured origin.
+ *
+ * @param {string} requestUrl
+ * @returns {URL}
+ */
+function buildProxyUrl(requestUrl: string): URL {
+    const request = new URL(requestUrl, "http://localhost");
+    const requestBaseUrl = Object.keys(configuration.proxy)
+        .filter(key => request.pathname.startsWith(key))
+        .sort((a, b) => b.length - a.length)[0];
+    const proxyUrl = new URL(configuration.proxy[requestBaseUrl]);
+    const basePath = proxyUrl.pathname.endsWith("/") ? proxyUrl.pathname.slice(0, -1) : proxyUrl.pathname;
+    const suffix = request.pathname.slice(requestBaseUrl.length);
+
+    proxyUrl.pathname = `${basePath}${suffix}` || "/";
+    proxyUrl.search = request.search;
+    proxyUrl.hash = "";
+    return proxyUrl;
 }
 
 /**
@@ -174,6 +195,7 @@ class CacheValue {
     filePath: string | null = null;
     mtimeMs: number = 0;
     lastValidated: number = 0;
+    statusCode: number = 200;
 
     /**
      * Computes the total memory held by the resource variants.
@@ -261,26 +283,13 @@ class CacheValue {
      * @returns {Promise<void>}
      */
     async proxyFile(requestUrl: string): Promise<void> {
-        const buffer = await new Promise((resolve: (buffer: Buffer) => void, reject) => {
-            const requestBaseUrl = Object.keys(configuration.proxy).filter(key => key === requestUrl.substr(0, key.length))[0];
-            const proxyBaseUrl = configuration.proxy[requestBaseUrl];
+        const response = await requestBuffer(buildProxyUrl(requestUrl), PROXY_TIMEOUT, PROXY_MAX_SIZE);
+        const buffer = response.buffer;
+        const contentType = response.headers["content-type"] || getContentType(requestUrl);
+        const mimeType = contentType.split(";", 1)[0].trim().toLowerCase();
+        this.statusCode = response.statusCode;
 
-            const proxyUrl = `${proxyBaseUrl}${requestUrl.substr(requestBaseUrl.length)}`;
-            const options = parse(proxyUrl);
-
-            let dataBuffer = Buffer.alloc(0);
-            (options.protocol === "https:" ? https : http).get(options, res => {
-                res.on("data", data => {
-                    dataBuffer = Buffer.concat([dataBuffer, data]);
-                }).on("end", () => {
-                    resolve(dataBuffer);
-                });
-            });
-        });
-
-        const contentType = getContentType(requestUrl);
-
-        if (TXT_CONETENT_TYPE.indexOf(contentType) !== -1) {
+        if (TXT_CONETENT_TYPE.indexOf(mimeType) !== -1) {
             this.data = buffer.toString("utf8");
             this.dataType = "txt";
             this.contentType = contentType;
@@ -289,9 +298,9 @@ class CacheValue {
             this.brotliData = compressed.brotliData;
         } else {
             this.dataType = "bin";
-            const converted = await convertResource(buffer, contentType);
+            const converted = await convertResource(buffer, mimeType);
             this.data = converted.data;
-            this.contentType = converted.contentType;
+            this.contentType = converted.contentType === mimeType ? contentType : converted.contentType;
         }
 
         this.hash = sha256Hex(this.data);
@@ -332,65 +341,47 @@ async function convertResource(data: Buffer, contentType: string): Promise<{ dat
  * @param {string} requestUrl
  * @returns {Promise<string>}
  */
-function evaluateHtmlFile(content: string, requestUrl: string): Promise<string> {
-    return new Promise(async (resolve: (html: string) => void) => {
-        // Declares a virtual DOM.
-        const dom = new jsdom.JSDOM(content, {
-            url: `http://127.0.0.1:${configuration.port}${requestUrl}`,
-            referrer: `http://127.0.0.1:${configuration.port}${requestUrl}`,
-            contentType: "text/html",
-            virtualConsole,
-            includeNodeLocations: true,
-            runScripts: "outside-only",
-        });
+async function evaluateHtmlFile(content: string, requestUrl: string): Promise<string> {
+    const dom = new jsdom.JSDOM(content, {
+        url: `http://127.0.0.1:${configuration.port}${requestUrl}`,
+        referrer: `http://127.0.0.1:${configuration.port}${requestUrl}`,
+        contentType: "text/html",
+        virtualConsole,
+        includeNodeLocations: true,
+        runScripts: "outside-only",
+    });
+    const vmContext = dom.getInternalVMContext();
+    const scripts = [...dom.window.document.getElementsByTagName("script").valueOf()];
 
-        const vmContext = dom.getInternalVMContext();
+    // Loads scripts concurrently, then executes them in document order.
+    const scriptSources = await Promise.all(scripts.map(async script => {
+        if (!script.attributes || !script.attributes.src || !script.attributes.src.value) return script.innerHTML;
+        const scriptSrc = script.attributes.src.value;
 
-        /**
-         * Function to execute a script in the virtual DOM.
-         *
-         * @param {string} scriptTxt
-         */
-        const executeScript = (scriptTxt: string): void => {
-            try {
-                new Script(scriptTxt).runInContext(vmContext);
-            } catch(err) {
-                logger.error("Error with script execution", err);
+        try {
+            if (/^https?:\/\//.test(scriptSrc)) {
+                const response = await requestBuffer(new URL(scriptSrc), PROXY_TIMEOUT, PROXY_MAX_SIZE);
+                return response.buffer.toString("utf8");
             }
+
+            const cacheValue = await readFile(scriptSrc, scriptSrc, configuration.contentType.js);
+            return cacheValue.data.toString();
+        } catch(err) {
+            logger.error(`Unable to load script ${scriptSrc}`, err);
+            return "";
         }
+    }));
 
-        // Finds the source of each script and sends it to the `executeScript` function.
-        const scriptsPromises = [...dom.window.document.getElementsByTagName("script").valueOf()]
-            .map(async script => {
-                if (script.attributes && script.attributes.src && script.attributes.src.value) {
-                    const scriptSrc = script.attributes.src.value;
+    for (const scriptSource of scriptSources) {
+        try {
+            new Script(scriptSource).runInContext(vmContext, { timeout: SCRIPT_TIMEOUT });
+        } catch(err) {
+            logger.error("Error with script execution", err);
+        }
+    }
 
-                    if (/^http[s]?:\/\//.test(scriptSrc)) {
-                        await new Promise((resolve: () => void) => {
-                            let buffer = Buffer.alloc(0);
-                            (scriptSrc.split(":")[0] === "https" ? https : http).get(parse(scriptSrc), res => {
-                                res.on("data", data => {
-                                    buffer = Buffer.concat([buffer, data]);
-                                }).on("end", () => {
-                                    executeScript(buffer.toString());
-                                    resolve();
-                                });
-                            });
-                        });
-                    } else {
-                        const cacheValue = await readFile(scriptSrc, scriptSrc, configuration.contentType.js);
-                        executeScript(cacheValue.data);
-                    }
-                } else {
-                    executeScript(script.innerHTML);
-                }
-            });
-
-        // Waits for each script source to be loaded and executed before checking the dom stability.
-        await Promise.all(scriptsPromises);
-
-        // Checks if the dom is still being modified. If not, displays its current status.
-
+    // Waits until the DOM is stable before serializing it.
+    return new Promise((resolve: (html: string) => void) => {
         let increment = 0;
         let lastComputedHtmlMd5 = "";
 

@@ -20,6 +20,9 @@ export interface Configuration {
     cacheValidationInterval: number;
     diskCacheMaxSize: number;
     diskCacheCleanupInterval: number;
+    proxyTimeout: number;
+    proxyMaxSize: number;
+    scriptTimeout: number;
     logDir: string;
     enableIsomorphic: boolean;
     chromiumPath: string | null;

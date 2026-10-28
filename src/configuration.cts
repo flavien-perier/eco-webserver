@@ -54,6 +54,12 @@ module.exports.default = {
 
     diskCacheCleanupInterval: Number(ecoconf.diskCacheCleanupInterval) || 60 * 60 * 1000,
 
+    proxyTimeout: Number(process.env.ECO_PROXY_TIMEOUT || ecoconf.proxyTimeout) || 10000,
+
+    proxyMaxSize: Number(process.env.ECO_PROXY_MAX_SIZE || ecoconf.proxyMaxSize) || 50 * 1024 * 1024,
+
+    scriptTimeout: Number(ecoconf.scriptTimeout) || 1000,
+
     /**
      * @type {string}
      */
