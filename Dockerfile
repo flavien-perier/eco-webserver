@@ -1,4 +1,4 @@
-FROM node:24-alpine as builder
+FROM node:24-alpine AS builder
 
 WORKDIR /opt/eco-webserver
 
@@ -6,7 +6,7 @@ RUN apk add --no-cache build-base g++ python3 libpng-dev jpeg-dev giflib-dev pan
 
 COPY --chown=root:root --chmod=750 . .
 
-RUN npm install --production
+RUN npm install --omit=dev
 
 FROM node:24-alpine
 
@@ -26,12 +26,15 @@ ENV ECO_CACHE_CYCLE="1800" \
     ECO_CHROMIUM_PATH="/usr/bin/chromium-browser"
 
 WORKDIR /opt/eco-webserver
-VOLUME ["/dist", "/cache"]
 
-RUN apk add --no-cache libpng-dev jpeg-dev giflib-dev pango-dev cairo-dev vips chromium && \
+RUN apk add --no-cache libpng libjpeg-turbo giflib pango cairo vips chromium && \
     addgroup -g $DOCKER_GID eco-webserver && \
-    adduser -G eco-webserver -D -h /home/eco-webserver -u $DOCKER_UID eco-webserver
+    adduser -G eco-webserver -D -h /home/eco-webserver -u $DOCKER_UID eco-webserver && \
+    mkdir -p /dist /cache && \
+    touch /var/log/server.log && \
+    chown -R eco-webserver:eco-webserver /dist /cache /var/log/server.log
 
+VOLUME ["/dist", "/cache"]
 USER eco-webserver
 
 EXPOSE 8080

@@ -10,7 +10,7 @@ const minifyCss = proxyquire("../src/minifyCss.cts", mockConfiguration);
 
 describe("minifyCss", () => {
     afterEach(() => {
-        fs.rmdirSync(TEST_CACHE, { recursive: true });
+        fs.rmSync(TEST_CACHE, { recursive: true, force: true });
     });
 
     it("Minify pure css", async () => {

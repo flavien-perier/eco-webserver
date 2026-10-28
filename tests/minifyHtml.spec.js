@@ -11,7 +11,7 @@ const minifyHtml = proxyquire("../src/minifyHtml.cts", mockConfiguration);
 
 describe("minifyHtml", () => {
     afterEach(() => {
-        fs.rmdirSync(TEST_CACHE, { recursive: true });
+        fs.rmSync(TEST_CACHE, { recursive: true, force: true });
     });
 
     it("Minify pure html", async () => {

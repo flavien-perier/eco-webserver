@@ -11,7 +11,7 @@ const minifyJs = proxyquire("../src/minifyJs.cts", mockConfiguration);
 
 describe("minifyJs", () => {
     afterEach(() => {
-        fs.rmdirSync(TEST_CACHE, { recursive: true });
+        fs.rmSync(TEST_CACHE, { recursive: true, force: true });
     });
 
     it("Minify pure js", async () => {

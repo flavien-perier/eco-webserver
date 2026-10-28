@@ -15,7 +15,7 @@ describe("convertImage", () => {
     });
 
     afterEach(() => {
-        fs.rmdirSync(TEST_CACHE, { recursive: true });
+        fs.rmSync(TEST_CACHE, { recursive: true, force: true });
     });
 
     it("Converts an image into webp", async () => {

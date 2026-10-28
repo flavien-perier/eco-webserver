@@ -14,7 +14,7 @@ describe("convertFont", () => {
     });
 
     afterEach(() => {
-        fs.rmdirSync(TEST_CACHE, { recursive: true });
+        fs.rmSync(TEST_CACHE, { recursive: true, force: true });
     });
 
     it("Converts a font into woff2", async () => {

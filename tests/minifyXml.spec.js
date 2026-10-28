@@ -10,7 +10,7 @@ const minifyXml = proxyquire("../src/minifyXml.cts", mockConfiguration);
 
 describe("minifyXml", () => {
     afterEach(() => {
-        fs.rmdirSync(TEST_CACHE, { recursive: true });
+        fs.rmSync(TEST_CACHE, { recursive: true, force: true });
     });
 
     it("Minify pure xml", async () => {

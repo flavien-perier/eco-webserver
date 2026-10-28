@@ -71,7 +71,7 @@ describe("server", () => {
         });
 
         afterEach(() => {
-            fs.rmdirSync(TEST_CACHE, { recursive: true });
+            fs.rmSync(TEST_CACHE, { recursive: true, force: true });
         });
 
         it("Should display a page", done => {
@@ -241,7 +241,7 @@ describe("server", () => {
         });
 
         afterEach(() => {
-            fs.rmdirSync(TEST_CACHE, { recursive: true });
+            fs.rmSync(TEST_CACHE, { recursive: true, force: true });
         });
 
         it("Should display a page with 404", done => {
@@ -296,7 +296,7 @@ describe("server", () => {
         });
 
         afterEach(() => {
-            fs.rmdirSync(TEST_CACHE, { recursive: true });
+            fs.rmSync(TEST_CACHE, { recursive: true, force: true });
         });
 
         beforeAll(() => {
@@ -304,7 +304,7 @@ describe("server", () => {
         });
 
         afterAll(() => {
-            fs.rmdirSync(SANDBOX_DIR, { recursive: true });
+            fs.rmSync(SANDBOX_DIR, { recursive: true, force: true });
         });
 
         it("Should display a page contained in the cache", done => {
@@ -337,7 +337,7 @@ describe("server", () => {
                         </html>`);
 
                     fs.writeFileSync(SANDBOX_DIR + "/index.html", "");
-                    fs.rmdirSync(TEST_CACHE, { recursive: true });
+                    fs.rmSync(TEST_CACHE, { recursive: true, force: true });
                     fs.mkdirSync(TEST_CACHE);
 
                     supertest(server)
@@ -394,7 +394,7 @@ describe("server", () => {
         });
 
         afterEach(() => {
-            fs.rmdirSync(TEST_CACHE, { recursive: true });
+            fs.rmSync(TEST_CACHE, { recursive: true, force: true });
         });
 
         it("Should load JavaScript in the page", done => {
@@ -457,7 +457,7 @@ describe("server", () => {
         });
 
         afterEach(() => {
-            fs.rmdirSync(TEST_CACHE, { recursive: true });
+            fs.rmSync(TEST_CACHE, { recursive: true, force: true });
         });
 
         const server = http.createServer((req, res) => {
@@ -572,7 +572,7 @@ describe("server", () => {
 
         afterAll(done => {
             server.close(() => {
-                fs.rmdirSync(TEST_CACHE, { recursive: true });
+                fs.rmSync(TEST_CACHE, { recursive: true, force: true });
                 done();
             });
         });

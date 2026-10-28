@@ -10,7 +10,7 @@ const minifySvg = proxyquire("../src/minifySvg.cts", mockConfiguration);
 
 describe("minifySvg", () => {
     afterEach(() => {
-        fs.rmdirSync(TEST_CACHE, { recursive: true });
+        fs.rmSync(TEST_CACHE, { recursive: true, force: true });
     });
 
     it("Minify pure svg", async () => {
