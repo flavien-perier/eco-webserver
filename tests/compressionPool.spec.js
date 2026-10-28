@@ -28,6 +28,7 @@ describe("compressionPool", () => {
         expect(gunzipSync(results[1].gzipData).toString()).toEqual("second payload");
         expect(gunzipSync(results[2].gzipData).toString()).toEqual("third payload");
         expect(pool.queue.length).toEqual(0);
+        expect(pool.workers.length).toEqual(2);
     });
 
     it("Reuses an idle worker instead of creating a new one", async () => {

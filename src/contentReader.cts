@@ -78,6 +78,13 @@ const sha256Hex = (data: string | Buffer): string => createHash("sha256").update
 const cache = new Map<string, CacheValue>();
 
 /**
+ * Resource loads currently in progress, shared by concurrent requests.
+ *
+ * @type {Map<string, Promise<CacheValue>>}
+ */
+const pendingResources = new Map<string, Promise<CacheValue>>();
+
+/**
  * Cleans at regular time intervals cache resources that have not been accessed for a long time.
  */
 setInterval((): void => {
@@ -320,6 +327,36 @@ function evaluateHtmlFile(content: string, requestUrl: string): Promise<string> 
 }
 
 /**
+ * Gets a cached resource or shares its in-progress loading.
+ *
+ * @param {string} cacheKey
+ * @param {() => Promise<CacheValue>} loader
+ * @returns {Promise<CacheValue>}
+ */
+async function getResource(cacheKey: string, loader: () => Promise<CacheValue>): Promise<CacheValue> {
+    const cachedValue = cache.get(cacheKey);
+    if (cachedValue) {
+        cachedValue.ttl++;
+        return cachedValue;
+    }
+
+    let pendingResource = pendingResources.get(cacheKey);
+    if (!pendingResource) {
+        pendingResource = loader().then(cacheValue => {
+            cache.set(cacheKey, cacheValue);
+            return cacheValue;
+        }).finally(() => {
+            pendingResources.delete(cacheKey);
+        });
+        pendingResources.set(cacheKey, pendingResource);
+    }
+
+    const cacheValue = await pendingResource;
+    cacheValue.ttl++;
+    return cacheValue;
+}
+
+/**
  * Reads the contents of a resource from the `dist` folder.
  *
  * @param {string} filePath
@@ -327,22 +364,12 @@ function evaluateHtmlFile(content: string, requestUrl: string): Promise<string> 
  * @param {string} contentType
  * @returns {Promise<CacheValue>}
  */
-async function readFile(filePath: string, requestUrl: string, contentType: string): Promise<CacheValue> {
-    /**
-     * @type {CacheValue}
-     */
-    let cacheValue: CacheValue;
-
-    if (cache.has(requestUrl)) {
-        cacheValue = cache.get(requestUrl);
-        cacheValue.ttl++;
-    } else {
-        cacheValue = new CacheValue();
+function readFile(filePath: string, requestUrl: string, contentType: string): Promise<CacheValue> {
+    return getResource(requestUrl, async () => {
+        const cacheValue = new CacheValue();
         await cacheValue.localFile(filePath, requestUrl, contentType);
-        cache.set(requestUrl, cacheValue);
-    }
-
-    return cacheValue;
+        return cacheValue;
+    });
 }
 
 /**
@@ -351,22 +378,12 @@ async function readFile(filePath: string, requestUrl: string, contentType: strin
  * @param {string} requestUrl
  * @returns {Promise<CacheValue>}
  */
-async function readProxy(requestUrl: string): Promise<CacheValue> {
-    /**
-     * @type {CacheValue}
-     */
-    let cacheValue: CacheValue;
-
-    if (cache.has(requestUrl)) {
-        cacheValue = cache.get(requestUrl);
-        cacheValue.ttl++;
-    } else {
-        cacheValue = new CacheValue();
+function readProxy(requestUrl: string): Promise<CacheValue> {
+    return getResource(requestUrl, async () => {
+        const cacheValue = new CacheValue();
         await cacheValue.proxyFile(requestUrl);
-        cache.set(requestUrl, cacheValue);
-    }
-
-    return cacheValue;
+        return cacheValue;
+    });
 }
 
 module.exports = {

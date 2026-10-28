@@ -164,13 +164,13 @@ class CompressionPool {
      * @returns {Promise<{gzipData: Buffer, brotliData: Buffer}>}
      */
     compress(data: string | Buffer): Promise<{ gzipData: Buffer; brotliData: Buffer }> {
-        if (this.workers.length === 0) {
-            this.addWorker();
-        }
-
         return new Promise((resolve: Function, reject: Function) => {
             this.queue.push({ data, resolve, reject });
             this.drainQueue();
+
+            while (this.queue.length > 0 && this.workers.length < this.size) {
+                this.addWorker();
+            }
         });
     }
 }
