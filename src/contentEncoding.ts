@@ -8,12 +8,14 @@ function encodingQuality(header: string, encoding: string): number {
     let wildcardQuality: number | null = null;
 
     for (const part of header.split(",")) {
-        const [name, ...parameters] = part.trim().toLowerCase().split(";");
+        const [rawName, ...parameters] = part.trim().toLowerCase().split(";");
+        const name = rawName.trim();
         let currentQuality = 1;
 
         for (const parameter of parameters) {
-            const match = /^\s*q\s*=\s*(0(?:\.\d+)?|1(?:\.0+)?)\s*$/.exec(parameter);
-            if (match) currentQuality = Number(match[1]);
+            if (!/^\s*q\s*=/i.test(parameter)) continue;
+            const match = /^\s*q\s*=\s*(0(?:\.\d+)?|1(?:\.0+)?)\s*$/i.exec(parameter);
+            currentQuality = match ? Number(match[1]) : 0;
         }
 
         if (name === encoding) quality = currentQuality;

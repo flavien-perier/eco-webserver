@@ -64,6 +64,7 @@ async function cleanProcessingCache(maxSize: number = DISK_CACHE_MAX_SIZE): Prom
             totalSize -= entries[index].size;
         } catch(err) {
             if (err.code !== "ENOENT") throw err;
+            totalSize -= entries[index].size;
         }
     }
 }

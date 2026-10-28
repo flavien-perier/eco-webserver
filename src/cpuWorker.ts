@@ -6,11 +6,7 @@ const { minify: minifyHtmlDocument } = require("html-minifier-terser");
 const csso = require("csso");
 const { optimize } = require("svgo");
 const wawoff2 = require("wawoff2");
-
-const COMMENT_MATCHER = /<!--.*?-->/gs;
-const SPACE_BETWEEN_TAGS_MATCHER = />\s+</gs;
-const NEW_LINE_MATCHER = /[\n\r\t]+/g;
-const MULTIPLE_SPACE_MATCHER = / {2,}/g;
+const minifyXmlText = require("./minifyXmlText.ts");
 
 /**
  * Executes a CPU-heavy operation without loading the application configuration.
@@ -54,12 +50,7 @@ async function execute(operation: string, input: string | Buffer): Promise<strin
         case "json":
             return JSON.stringify(JSON.parse(input as string));
         case "xml":
-            return (input as string)
-                .replace(COMMENT_MATCHER, "")
-                .replace(SPACE_BETWEEN_TAGS_MATCHER, "><")
-                .replace(NEW_LINE_MATCHER, " ")
-                .replace(MULTIPLE_SPACE_MATCHER, " ")
-                .trim();
+            return minifyXmlText(input as string);
         case "font":
             return Buffer.from(await wawoff2.compress(input));
         default:

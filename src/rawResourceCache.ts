@@ -1,6 +1,7 @@
 "use strict";
 
 const { lstat, readFile } = require("fs/promises");
+const { constants } = require("fs");
 const { resolve, sep } = require("path");
 
 const configuration = require("./configuration.ts").default;
@@ -89,11 +90,11 @@ function getPendingResource(filePath: string, cachedResource?: CachedResource): 
         try {
             const details = await lstat(filePath);
             if (!details.isFile()) return null;
-            const data = await readFile(filePath);
+            const data = await readFile(filePath, { flag: constants.O_RDONLY | constants.O_NOFOLLOW });
             storeCachedResource(filePath, data, details.mtimeMs);
             return data;
         } catch(err) {
-            if (err.code === "ENOENT") return null;
+            if (err.code === "ENOENT" || err.code === "ELOOP") return null;
             throw err;
         }
     })().finally(() => {

@@ -21,16 +21,22 @@ const pathCache = new Map<string, { isFile: boolean; lastValidated: number }>();
  * Converts a request URL into a canonical path confined to distDir.
  */
 function resolveRequestPath(requestUrl: string): { requestPath: string; filePath: string } {
-    const parsedUrl = new URL(requestUrl || "/", "http://localhost");
-    const requestPath = decodeURIComponent(parsedUrl.pathname);
-    const distDir = resolve(configuration.distDir);
-    const filePath = resolve(distDir, `.${requestPath}`);
+    try {
+        const parsedUrl = new URL(requestUrl || "/", "http://localhost");
+        const requestPath = decodeURIComponent(parsedUrl.pathname);
+        const distDir = resolve(configuration.distDir);
+        const filePath = resolve(distDir, `.${requestPath}`);
 
-    if (requestPath.includes("\0") || (filePath !== distDir && !filePath.startsWith(distDir + sep))) {
-        throw new Error("Invalid request path");
+        if (requestPath.includes("\0") || (filePath !== distDir && !filePath.startsWith(distDir + sep))) {
+            throw new Error("Invalid request path");
+        }
+
+        return { requestPath, filePath };
+    } catch(err) {
+        const error: any = new Error("Invalid request path");
+        error.statusCode = 400;
+        throw error;
     }
-
-    return { requestPath, filePath };
 }
 
 /**
@@ -67,6 +73,15 @@ module.exports = (): http.Server => {
     return http.createServer(async (req, res) => {
         if (configuration.accessLog !== false) {
             logger.http(req.headers["x-real-ip"] || req.connection.remoteAddress, req.headers["user-agent"], req.method, req.url);
+        }
+
+        if (req.method !== "GET" && req.method !== "HEAD") {
+            const header = buildHeader(configuration.contentType.html, false, null);
+            header["Content-Length"] = 0;
+            header["Allow"] = "GET, HEAD";
+            res.writeHead(405, "Method Not Allowed", header);
+            res.end();
+            return;
         }
 
         try {
@@ -107,8 +122,8 @@ module.exports = (): http.Server => {
             res.end(req.method === "HEAD" ? undefined : body);
         } catch(err) {
             logger.error(`Internal server error: ${err.message || err}`, err);
-            const statusCode = err.statusCode === 503 || err.statusCode === 504 ? err.statusCode : 500;
-            const statusMessage = statusCode === 503 ? "Service Unavailable" : statusCode === 504 ? "Gateway Timeout" : "Internal server error";
+            const statusCode = [400, 503, 504].includes(err.statusCode) ? err.statusCode : 500;
+            const statusMessage = statusCode === 400 ? "Bad Request" : statusCode === 503 ? "Service Unavailable" : statusCode === 504 ? "Gateway Timeout" : "Internal server error";
             const header = buildHeader(configuration.contentType.html, false, null);
             header["Content-Length"] = 0;
             if (statusCode === 503) header["Retry-After"] = "1";
