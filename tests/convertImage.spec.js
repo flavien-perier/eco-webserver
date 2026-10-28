@@ -7,14 +7,19 @@ const TEST_CACHE = "./tests/test-cache";
 const mockConfiguration = {
     "./configuration.cts": { default: { cacheDir: TEST_CACHE }, "@global": true }
 };
-const convertImage = proxyquire("../src/convertImage.cts", mockConfiguration);
+const processingCache = proxyquire("../src/processingCache.cts", mockConfiguration);
+const convertImage = proxyquire("../src/convertImage.cts", {
+    ...mockConfiguration,
+    "./processingCache.cts": processingCache
+});
 
 describe("convertImage", () => {
     beforeEach(() => {
-        fs.mkdirSync(TEST_CACHE);
+        fs.mkdirSync(TEST_CACHE, { recursive: true });
     });
 
-    afterEach(() => {
+    afterEach(async () => {
+        await processingCache.flushProcessingCache();
         fs.rmSync(TEST_CACHE, { recursive: true, force: true });
     });
 

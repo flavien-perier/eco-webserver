@@ -3,6 +3,7 @@
 const { minify } = require("terser");
 
 const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
+const { runCpuTask } = require("./cpuPool.cts");
 const Logger = require("./Logger.cts");
 
 const logger = new Logger();
@@ -21,26 +22,23 @@ module.exports = async function minifyJs(inputJs: string, hash: string): Promise
         return cacheJs.toString();
     }
 
-    let result;
-
-    try {
-        result = await minify(inputJs, {
-            mangle: false,
-            compress: {
-                drop_console: true
-            }
-        });
-    } catch(err) {
-        result = { error: err };
-    }
-
     let outputJs;
 
-    if (result.error) {
-        logger.error("Compression error with terser", result.error);
+    try {
+        outputJs = await runCpuTask("js", inputJs, async () => {
+            const result = await minify(inputJs, {
+                mangle: false,
+                compress: {
+                    drop_console: true
+                }
+            });
+            if (result.error) throw result.error;
+            return result.code;
+        });
+    } catch(err) {
+        if (err.statusCode === 503) throw err;
+        logger.error("Compression error with terser", err);
         outputJs = inputJs;
-    } else {
-        outputJs = result.code;
     }
 
     await writeProcessingCache(outputJs, hash, "js");

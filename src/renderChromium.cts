@@ -1,14 +1,14 @@
 "use strict";
 
 const { existsSync } = require("fs");
-const { lstat, readFile } = require("fs/promises");
-const { resolve, sep, join } = require("path");
+const { join } = require("path");
 const { tmpdir } = require("os");
 
 const puppeteer = require("puppeteer-core");
 
 const configuration = require("./configuration.cts").default;
 const getContentType = require("./getContentType.cts");
+const { readLocalResource } = require("./rawResourceCache.cts");
 const Logger = require("./Logger.cts");
 
 const logger = new Logger();
@@ -16,6 +16,8 @@ const logger = new Logger();
 const CHROMIUM_PATH = configuration.chromiumPath;
 const CHROMIUM_CONCURRENCY = Math.max(1, Number(process.env.ECO_CHROMIUM_CONCURRENCY || configuration.chromiumConcurrency) || 2);
 const CHROMIUM_MAX_QUEUE = Math.max(0, Number(configuration.chromiumMaxQueue ?? 100));
+const CHROMIUM_RENDER_TIMEOUT = Math.max(1, Number(configuration.chromiumRenderTimeout) || 30000);
+const CHROMIUM_WAIT_UNTIL = configuration.chromiumWaitUntil || "networkidle0";
 const CHROMIUM_ARGS = [
     "--no-sandbox",
     "--disable-setuid-sandbox",
@@ -28,7 +30,7 @@ const CHROMIUM_ARGS = [
 let hasLoggedMissingChromium = false;
 let browserPromise: Promise<any> | null = null;
 let activeRenders = 0;
-const renderQueue: Function[] = [];
+const renderQueue: any[] = [];
 
 /**
  * Returns the shared chromium browser instance.
@@ -59,16 +61,35 @@ async function getBrowser(): Promise<any> {
 }
 
 /**
- * Acquires a rendering slot, waiting in a bounded queue when necessary.
+ * Acquires a rendering slot, waiting in a bounded queue until the deadline.
+ * Timed out entries are removed so they cannot consume a slot later.
  *
+ * @param {number} deadline
  * @returns {Promise<void>}
  */
-async function acquireRenderSlot(): Promise<void> {
-    if (activeRenders >= CHROMIUM_CONCURRENCY) {
-        if (renderQueue.length >= CHROMIUM_MAX_QUEUE) throw new Error("Chromium rendering queue is full");
-        await new Promise(resolve => renderQueue.push(resolve));
+async function acquireRenderSlot(deadline: number): Promise<void> {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) throw new Error("Chromium rendering deadline exceeded");
+
+    if (activeRenders < CHROMIUM_CONCURRENCY) {
+        activeRenders++;
+        return;
     }
-    activeRenders++;
+    if (renderQueue.length >= CHROMIUM_MAX_QUEUE) throw new Error("Chromium rendering queue is full");
+
+    await new Promise<void>((resolve, reject) => {
+        const entry: any = { resolve: null, timer: null };
+        entry.resolve = () => {
+            clearTimeout(entry.timer);
+            resolve();
+        };
+        entry.timer = setTimeout(() => {
+            const index = renderQueue.indexOf(entry);
+            if (index !== -1) renderQueue.splice(index, 1);
+            reject(new Error("Chromium rendering deadline exceeded while waiting for a slot"));
+        }, remaining);
+        renderQueue.push(entry);
+    });
 }
 
 /**
@@ -81,27 +102,31 @@ function releaseRenderSlot(): void {
     const next = renderQueue.shift();
     if (next) {
         activeRenders++;
-        next();
+        next.resolve();
     }
 }
 
 /**
- * Reads a local sub-resource without following paths outside distDir.
+ * Runs an operation without waiting beyond the absolute rendering deadline.
+ * The operation itself may not be cancellable, but its result is ignored on timeout.
  *
- * @param {string} pathname
- * @returns {Promise<Buffer | null>}
+ * @param {Function} operation
+ * @param {number} deadline
+ * @returns {Promise<any>}
  */
-async function readLocalResource(pathname: string): Promise<Buffer | null> {
-    const distDir = resolve(configuration.distDir);
-    const filePath = resolve(distDir, `.${decodeURIComponent(pathname)}`);
-    if (filePath !== distDir && !filePath.startsWith(distDir + sep)) return null;
+async function runBeforeDeadline(operation: Function, deadline: number): Promise<any> {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) throw new Error("Chromium rendering deadline exceeded");
+
+    let timer: any;
+    const timeout = new Promise((resolve, reject) => {
+        timer = setTimeout(() => reject(new Error("Chromium rendering deadline exceeded")), remaining);
+    });
 
     try {
-        if (!(await lstat(filePath)).isFile()) return null;
-        return await readFile(filePath);
-    } catch(err) {
-        if (err.code === "ENOENT") return null;
-        throw err;
+        return await Promise.race([Promise.resolve().then(operation), timeout]);
+    } finally {
+        clearTimeout(timer);
     }
 }
 
@@ -123,15 +148,16 @@ module.exports = async function renderChromium(content: string, requestUrl: stri
         return null;
     }
 
+    const deadline = Date.now() + CHROMIUM_RENDER_TIMEOUT;
     let page;
     let slotAcquired = false;
 
     try {
-        await acquireRenderSlot();
+        await acquireRenderSlot(deadline);
         slotAcquired = true;
-        const browser = await getBrowser();
-        page = await browser.newPage();
-        await page.setRequestInterception(true);
+        const browser = await runBeforeDeadline(() => getBrowser(), deadline);
+        page = await runBeforeDeadline(() => browser.newPage(), deadline);
+        await runBeforeDeadline(() => page.setRequestInterception(true), deadline);
 
         let isDocumentServed = false;
 
@@ -166,14 +192,20 @@ module.exports = async function renderChromium(content: string, requestUrl: stri
             }
         });
 
-        await page.goto(`http://127.0.0.1:${configuration.port}${requestUrl}`, { waitUntil: "networkidle0", timeout: 30000 });
+        await runBeforeDeadline(() => page.goto(`http://127.0.0.1:${configuration.port}${requestUrl}`, {
+            waitUntil: CHROMIUM_WAIT_UNTIL,
+            timeout: Math.max(1, deadline - Date.now())
+        }), deadline);
 
-        return await page.content();
+        return await runBeforeDeadline(() => page.content(), deadline);
     } catch(err) {
         logger.error("Error during the chromium rendering, isomorphic rendering will use jsdom", err);
         return null;
     } finally {
-        if (page) await page.close().catch(() => {});
+        if (page) {
+            const closing = Promise.resolve().then(() => page.close()).catch(() => {});
+            if (Date.now() < deadline) await runBeforeDeadline(() => closing, deadline).catch(() => {});
+        }
         if (slotAcquired) releaseRenderSlot();
     }
 };

@@ -8,10 +8,18 @@ const configuration = require("./configuration.cts").default;
 
 const CACHE_VERSION = "v2";
 const DISK_CACHE_MAX_SIZE = Math.max(1, Number(process.env.ECO_DISK_CACHE_MAX_SIZE || configuration.diskCacheMaxSize) || 512 * 1024 * 1024);
-const CLEANUP_INTERVAL = Math.max(0, Number(configuration.diskCacheCleanupInterval) || 60 * 60 * 1000);
+const CLEANUP_INTERVAL = Math.max(0, Number(configuration.diskCacheCleanupInterval ?? 60 * 60 * 1000));
+const configuredWriteMaxQueue = Number(configuration.diskWriteMaxQueue);
+const DISK_WRITE_MAX_QUEUE = Number.isFinite(configuredWriteMaxQueue) && configuredWriteMaxQueue >= 0 ? Math.floor(configuredWriteMaxQueue) : 100;
+const configuredWriteConcurrency = Number(configuration.diskWriteConcurrency);
+const DISK_WRITE_CONCURRENCY = Number.isFinite(configuredWriteConcurrency) && configuredWriteConcurrency >= 1 ? Math.floor(configuredWriteConcurrency) : 2;
+const CLEANUP_STAT_CONCURRENCY = 32;
 
 let lastCleanup = 0;
 let cleanupPromise: Promise<void> | null = null;
+const writeQueue = [];
+const queuedWrites = new Map();
+const activeWrites = new Set<Promise<void>>();
 
 /**
  * Removes the least recently modified processing artefacts above the size limit.
@@ -28,17 +36,27 @@ async function cleanProcessingCache(maxSize: number = DISK_CACHE_MAX_SIZE): Prom
         throw err;
     }
 
-    const entries = (await Promise.all(files
-        .filter(file => file.startsWith(`${CACHE_VERSION}-`) && !file.endsWith(".tmp"))
-        .map(async file => {
+    const filesToStat = files.filter(file => file.startsWith(`${CACHE_VERSION}-`) && !file.endsWith(".tmp"));
+    const entries = [];
+    let nextFileIndex = 0;
+
+    const statFiles = async () => {
+        while (nextFileIndex < filesToStat.length) {
+            const file = filesToStat[nextFileIndex++];
             const path = join(configuration.cacheDir, file);
             try {
                 const details = await stat(path);
-                return { path, size: details.size, mtimeMs: details.mtimeMs };
+                entries.push({ path, size: details.size, mtimeMs: details.mtimeMs });
             } catch(err) {
-                return null;
+                // Files can disappear while the cleanup is running.
             }
-        }))).filter(entry => entry !== null);
+        }
+    };
+
+    await Promise.all(Array.from(
+        { length: Math.min(CLEANUP_STAT_CONCURRENCY, filesToStat.length) },
+        () => statFiles()
+    ));
 
     entries.sort((a, b) => b.mtimeMs - a.mtimeMs);
     let totalSize = entries.reduce((total, entry) => total + entry.size, 0);
@@ -54,25 +72,59 @@ async function cleanProcessingCache(maxSize: number = DISK_CACHE_MAX_SIZE): Prom
 }
 
 /**
- * Schedules a single cache cleanup at a time.
- *
- * @returns {Promise<void>}
+ * Schedules a single cache cleanup at a time without waiting for it.
  */
-async function scheduleCleanup(): Promise<void> {
+function scheduleCleanup(): void {
     if (Date.now() - lastCleanup < CLEANUP_INTERVAL) return;
     lastCleanup = Date.now();
 
     if (!cleanupPromise) {
-        cleanupPromise = cleanProcessingCache().finally(() => {
-            cleanupPromise = null;
-        });
+        cleanupPromise = cleanProcessingCache()
+            .catch(() => {})
+            .finally(() => {
+                cleanupPromise = null;
+            });
     }
-
-    await cleanupPromise;
 }
 
 /**
- * Pushes a treatment into the cache.
+ * Atomically writes one queued cache entry.
+ *
+ * @param {{afterProcessing: string | Buffer, cacheLocation: string, temporaryLocation: string}} task
+ * @returns {Promise<void>}
+ */
+async function writeCacheEntry(task): Promise<void> {
+    await mkdir(configuration.cacheDir, { recursive: true });
+
+    try {
+        await writeFile(task.temporaryLocation, task.afterProcessing);
+        await rename(task.temporaryLocation, task.cacheLocation);
+    } finally {
+        await unlink(task.temporaryLocation).catch(() => {});
+    }
+}
+
+/**
+ * Starts queued writes up to the configured concurrency.
+ */
+function pumpWriteQueue(): void {
+    while (activeWrites.size < DISK_WRITE_CONCURRENCY && writeQueue.length > 0) {
+        const task = writeQueue.shift();
+        const writePromise = writeCacheEntry(task)
+            .catch(() => {})
+            .finally(() => {
+                activeWrites.delete(writePromise);
+                queuedWrites.delete(task.key);
+                pumpWriteQueue();
+                scheduleCleanup();
+            });
+        activeWrites.add(writePromise);
+    }
+}
+
+/**
+ * Pushes a treatment into the cache without waiting for disk I/O.
+ * Duplicate and overflowing writes are discarded on a best-effort basis.
  *
  * @param {string | Buffer} afterProcessing
  * @param {string} hash
@@ -80,19 +132,33 @@ async function scheduleCleanup(): Promise<void> {
  * @returns {Promise<void>}
  */
 async function writeProcessingCache(afterProcessing: string | Buffer, hash: string, fileFormat: string): Promise<void> {
+    const key = `${hash}.${fileFormat}`;
+    if (queuedWrites.has(key) || writeQueue.length >= DISK_WRITE_MAX_QUEUE) return;
+
     const cacheLocation = fileCacheDir(hash, fileFormat);
-    const temporaryLocation = `${cacheLocation}.${process.pid}.${randomUUID()}.tmp`;
+    const task = {
+        key,
+        afterProcessing,
+        cacheLocation,
+        temporaryLocation: `${cacheLocation}.${process.pid}.${randomUUID()}.tmp`
+    };
 
-    await mkdir(configuration.cacheDir, { recursive: true });
+    writeQueue.push(task);
+    queuedWrites.set(key, task);
+    pumpWriteQueue();
+}
 
-    try {
-        await writeFile(temporaryLocation, afterProcessing);
-        await rename(temporaryLocation, cacheLocation);
-    } finally {
-        await unlink(temporaryLocation).catch(() => {});
+/**
+ * Waits for all cache writes and cleanups currently in progress.
+ *
+ * @returns {Promise<void>}
+ */
+async function flushProcessingCache(): Promise<void> {
+    while (writeQueue.length > 0 || activeWrites.size > 0 || cleanupPromise) {
+        const pending = Array.from(activeWrites);
+        if (cleanupPromise) pending.push(cleanupPromise);
+        await Promise.all(pending);
     }
-
-    await scheduleCleanup();
 }
 
 /**
@@ -125,5 +191,6 @@ function fileCacheDir(hash: string, fileFormat: string): string {
 module.exports = {
     cleanProcessingCache,
     writeProcessingCache,
+    flushProcessingCache,
     readProcessingCache,
 };

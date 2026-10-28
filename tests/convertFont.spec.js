@@ -6,14 +6,19 @@ const TEST_CACHE = "./tests/test-cache";
 const mockConfiguration = {
     "./configuration.cts": { default: { cacheDir: TEST_CACHE }, "@global": true }
 };
-const convertFont = proxyquire("../src/convertFont.cts", mockConfiguration);
+const processingCache = proxyquire("../src/processingCache.cts", mockConfiguration);
+const convertFont = proxyquire("../src/convertFont.cts", {
+    ...mockConfiguration,
+    "./processingCache.cts": processingCache
+});
 
 describe("convertFont", () => {
     beforeEach(() => {
-        fs.mkdirSync(TEST_CACHE);
+        fs.mkdirSync(TEST_CACHE, { recursive: true });
     });
 
-    afterEach(() => {
+    afterEach(async () => {
+        await processingCache.flushProcessingCache();
         fs.rmSync(TEST_CACHE, { recursive: true, force: true });
     });
 

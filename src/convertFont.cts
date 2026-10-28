@@ -3,6 +3,7 @@
 const wawoff2 = require("wawoff2");
 
 const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
+const { runCpuTask } = require("./cpuPool.cts");
 const Logger = require("./Logger.cts");
 
 const logger = new Logger();
@@ -24,8 +25,10 @@ module.exports = async function convertFont(inputFont: Buffer, hash: string): Pr
     let outputFont;
 
     try {
-        outputFont = Buffer.from(await wawoff2.compress(inputFont));
+        outputFont = await runCpuTask("font", inputFont,
+            async () => Buffer.from(await wawoff2.compress(inputFont)));
     } catch(err) {
+        if (err.statusCode === 503) throw err;
         logger.error("Font conversion error", err);
         return null;
     }

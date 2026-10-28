@@ -7,10 +7,15 @@ const mockConfiguration = {
     "./configuration.cts": { default: { cacheDir: TEST_CACHE }, "@global": true }
 };
 
-const minifyJs = proxyquire("../src/minifyJs.cts", mockConfiguration);
+const processingCache = proxyquire("../src/processingCache.cts", mockConfiguration);
+const minifyJs = proxyquire("../src/minifyJs.cts", {
+    ...mockConfiguration,
+    "./processingCache.cts": processingCache
+});
 
 describe("minifyJs", () => {
-    afterEach(() => {
+    afterEach(async () => {
+        await processingCache.flushProcessingCache();
         fs.rmSync(TEST_CACHE, { recursive: true, force: true });
     });
 
@@ -86,6 +91,15 @@ describe("minifyJs", () => {
         const fileHash = "jsHash3";
 
         expect(await minifyJs(inputJs, fileHash)).toEqual(inputJs);
+    });
+
+    it("Minifies large files in a worker", async () => {
+        const inputJs = `const value = "${"x".repeat(70 * 1024)}"; console.log(value);`;
+        const outputJs = await minifyJs(inputJs, "jsLargeHash");
+
+        expect(outputJs).not.toContain("console.log");
+        expect(outputJs).toContain("const value=");
+        expect(outputJs.length).toBeGreaterThan(70 * 1024);
     });
 
     it("Test cache", async () => {

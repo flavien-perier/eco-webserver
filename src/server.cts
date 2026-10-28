@@ -12,50 +12,10 @@ const { readFile, readProxy } = require("./contentReader.cts");
 const Logger = require("./Logger.cts");
 
 const logger = new Logger();
-
-/**
- * Returns the quality associated with an encoding in Accept-Encoding.
- *
- * @param {string} header
- * @param {string} encoding
- * @returns {number}
- */
-function encodingQuality(header: string, encoding: string): number {
-    let quality: number | null = null;
-    let wildcardQuality: number | null = null;
-
-    for (const part of header.split(",")) {
-        const [name, ...parameters] = part.trim().toLowerCase().split(";");
-        let currentQuality = 1;
-
-        for (const parameter of parameters) {
-            const match = /^\s*q\s*=\s*(0(?:\.\d+)?|1(?:\.0+)?)\s*$/.exec(parameter);
-            if (match) currentQuality = Number(match[1]);
-        }
-
-        if (name === encoding) quality = currentQuality;
-        else if (name === "*") wildcardQuality = currentQuality;
-    }
-
-    return quality ?? wildcardQuality ?? 0;
-}
-
-/**
- * Chooses the preferred supported response encoding.
- *
- * @param {string} header
- * @param {boolean} hasBrotli
- * @param {boolean} hasGzip
- * @returns {"br" | "gzip" | false}
- */
-function negotiateEncoding(header: string, hasBrotli: boolean, hasGzip: boolean): "br" | "gzip" | false {
-    const brotliQuality = hasBrotli ? encodingQuality(header, "br") : 0;
-    const gzipQuality = hasGzip ? encodingQuality(header, "gzip") : 0;
-
-    if (brotliQuality > 0 && brotliQuality >= gzipQuality) return "br";
-    if (gzipQuality > 0) return "gzip";
-    return false;
-}
+const PROXY_PREFIXES = Object.keys(configuration.proxy).sort((a, b) => b.length - a.length);
+const PATH_CACHE_VALIDATION_INTERVAL = Math.max(1, Number(configuration.cacheValidationInterval) || 60 * 1000);
+const PATH_CACHE_MAX_ENTRIES = Math.max(1, Number(configuration.cacheMaxEntries) || 1000);
+const pathCache = new Map<string, { isFile: boolean; lastValidated: number }>();
 
 /**
  * Converts a request URL into a canonical path confined to distDir.
@@ -78,17 +38,32 @@ function resolveRequestPath(requestUrl: string): { requestPath: string; filePath
 
 /**
  * Checks whether a path is a regular file without following symbolic links.
+ * Positive and negative resolutions share the content revalidation interval.
  *
  * @param {string} filePath
  * @returns {Promise<boolean>}
  */
 async function isFile(filePath: string): Promise<boolean> {
-    try {
-        return (await lstat(filePath)).isFile();
-    } catch(err) {
-        if (err.code === "ENOENT") return false;
-        throw err;
+    const cached = pathCache.get(filePath);
+    if (cached && Date.now() - cached.lastValidated < PATH_CACHE_VALIDATION_INTERVAL) {
+        pathCache.delete(filePath);
+        pathCache.set(filePath, cached);
+        return cached.isFile;
     }
+
+    let result = false;
+    try {
+        result = (await lstat(filePath)).isFile();
+    } catch(err) {
+        if (err.code !== "ENOENT") throw err;
+    }
+
+    pathCache.delete(filePath);
+    pathCache.set(filePath, { isFile: result, lastValidated: Date.now() });
+    while (pathCache.size > PATH_CACHE_MAX_ENTRIES) {
+        pathCache.delete(pathCache.keys().next().value);
+    }
+    return result;
 }
 
 /**
@@ -98,37 +73,33 @@ async function isFile(filePath: string): Promise<boolean> {
  */
 module.exports = (): http.Server => {
     return http.createServer(async (req, res) => {
-        logger.http(req.headers["x-real-ip"] || req.connection.remoteAddress, req.headers["user-agent"], req.method, req.url);
+        if (configuration.accessLog !== false) {
+            logger.http(req.headers["x-real-ip"] || req.connection.remoteAddress, req.headers["user-agent"], req.method, req.url);
+        }
 
         try {
             const requestUrl = req.url || "/";
             const { requestPath, filePath } = resolveRequestPath(requestUrl);
-            const acceptEncoding = req.headers["accept-encoding"] || "";
-            const proxyPrefix = Object.keys(configuration.proxy)
-                .filter(url => requestPath.startsWith(url))
-                .sort((a, b) => b.length - a.length)[0];
+            const acceptEncoding = typeof req.headers["accept-encoding"] === "string" ? req.headers["accept-encoding"] : "";
+            const proxyPrefix = PROXY_PREFIXES.find(url => requestPath.startsWith(url));
 
             let statusCode = 200;
             let statusMessage = "";
             let content: CacheValue;
 
             if (proxyPrefix) {
-                content = await readProxy(requestUrl);
+                content = await readProxy(requestUrl, acceptEncoding);
                 statusCode = content.statusCode;
             } else if (await isFile(filePath)) {
                 const contentType = getContentType(requestPath);
-                content = await readFile(requestPath, requestPath, contentType);
+                content = await readFile(requestPath, requestPath, contentType, acceptEncoding);
             } else if (configuration.use404File) {
-                content = await readFile("404.html", requestPath, configuration.contentType.html);
+                content = await readFile("404.html", requestPath, configuration.contentType.html, acceptEncoding);
                 statusCode = 404;
                 statusMessage = "Not found";
             } else {
-                content = await readFile("index.html", requestPath, configuration.contentType.html);
+                content = await readFile("index.html", requestPath, configuration.contentType.html, acceptEncoding);
             }
-
-            const encoding = negotiateEncoding(acceptEncoding, !!content.brotliData, !!content.gzipData);
-            const body = encoding === "br" ? content.brotliData : encoding === "gzip" ? content.gzipData : content.data;
-            const header = buildHeader(content.contentType, encoding, content.hash);
 
             if (req.headers["if-none-match"] === content.hash) {
                 res.writeHead(304, buildHeader(content.contentType, false, content.hash));
@@ -136,15 +107,20 @@ module.exports = (): http.Server => {
                 return;
             }
 
-            header["Content-Length"] = Buffer.byteLength(body);
+            const { encoding, body } = await content.responseData(acceptEncoding);
+            const header = buildHeader(content.contentType, encoding, content.hash);
+            header["Content-Length"] = Buffer.isBuffer(body) ? body.length : content.dataLength;
             if (statusMessage) res.writeHead(statusCode, statusMessage, header);
             else res.writeHead(statusCode, header);
             res.end(req.method === "HEAD" ? undefined : body);
         } catch(err) {
             logger.error(`Internal server error: ${err.message || err}`, err);
+            const statusCode = err.statusCode === 503 || err.statusCode === 504 ? err.statusCode : 500;
+            const statusMessage = statusCode === 503 ? "Service Unavailable" : statusCode === 504 ? "Gateway Timeout" : "Internal server error";
             const header = buildHeader(configuration.contentType.html, false, null);
             header["Content-Length"] = 0;
-            res.writeHead(500, "Internal server error", header);
+            if (statusCode === 503) header["Retry-After"] = "1";
+            res.writeHead(statusCode, statusMessage, header);
             res.end();
         }
     });

@@ -3,7 +3,11 @@
 const { Worker } = require("worker_threads");
 const { join } = require("path");
 
+const configuration = require("./configuration.cts").default;
+
 const WORKER_PATH = join(__dirname, "compressionWorker.cts");
+const configuredMaxQueue = Number(process.env.ECO_COMPRESSION_MAX_QUEUE ?? configuration.compressionMaxQueue ?? 100);
+const COMPRESSION_MAX_QUEUE = Number.isFinite(configuredMaxQueue) ? Math.max(0, Math.floor(configuredMaxQueue)) : 100;
 
 /**
  * Compresses a text resource with the `gzip` and `brotli` algorithms.
@@ -54,7 +58,7 @@ class CompressionPool {
         /**
          * Tasks waiting for a free worker.
          *
-         * @type {{data: string | Buffer, resolve: Function, reject: Function}[]}
+         * @type {{data: string | Buffer, encoding?: "gzip" | "br", resolve: Function, reject: Function}[]}
          */
         this.queue = [];
     }
@@ -70,7 +74,7 @@ class CompressionPool {
         /**
          * Task currently executed by the worker.
          *
-         * @type {{resolve: Function, reject: Function} | null}
+         * @type {{encoding?: "gzip" | "br", resolve: Function, reject: Function} | null}
          */
         worker.currentTask = null;
 
@@ -82,10 +86,16 @@ class CompressionPool {
             this.drainQueue();
 
             if (task) {
-                task.resolve({
-                    gzipData: Buffer.from(message.gzipData),
-                    brotliData: Buffer.from(message.brotliData)
-                });
+                if (task.encoding === "gzip") {
+                    task.resolve(Buffer.from(message.gzipData));
+                } else if (task.encoding === "br") {
+                    task.resolve(Buffer.from(message.brotliData));
+                } else {
+                    task.resolve({
+                        gzipData: Buffer.from(message.gzipData),
+                        brotliData: Buffer.from(message.brotliData)
+                    });
+                }
             }
         });
 
@@ -158,28 +168,39 @@ class CompressionPool {
      * Sends a task to a worker.
      *
      * @param {Worker} worker
-     * @param {{data: string | Buffer, resolve: Function, reject: Function}} task
+     * @param {{data: string | Buffer, encoding?: "gzip" | "br", resolve: Function, reject: Function}} task
      * @returns {void}
      */
-    runTask(worker: Worker, task: { data: string | Buffer; resolve: Function; reject: Function }): void {
-        worker.currentTask = { resolve: task.resolve, reject: task.reject };
+    runTask(worker: Worker, task: { data: string | Buffer; encoding?: "gzip" | "br"; resolve: Function; reject: Function }): void {
+        worker.currentTask = { encoding: task.encoding, resolve: task.resolve, reject: task.reject };
 
-        worker.postMessage(task.data);
+        worker.postMessage({ data: task.data, encoding: task.encoding });
     }
 
     /**
-     * Compresses a text resource with `gzip` and `brotli` inside a worker.
+     * Compresses a text resource with `gzip` and `brotli`, or with only the
+     * requested algorithm, inside a worker.
      *
      * @param {string | Buffer} data
-     * @returns {Promise<{gzipData: Buffer, brotliData: Buffer}>}
+     * @param {"gzip" | "br"} [encoding]
+     * @returns {Promise<{gzipData: Buffer, brotliData: Buffer} | Buffer>}
      */
-    compress(data: string | Buffer): Promise<{ gzipData: Buffer; brotliData: Buffer }> {
+    compress(data: string | Buffer, encoding?: "gzip" | "br"): Promise<{ gzipData: Buffer; brotliData: Buffer } | Buffer> {
         return new Promise((resolve: Function, reject: Function) => {
-            this.queue.push({ data, resolve, reject });
+            const task = { data, encoding, resolve, reject };
+            this.queue.push(task);
             this.drainQueue();
 
             while (this.queue.length > 0 && this.workers.length < this.size) {
                 this.addWorker();
+            }
+
+            const queueIndex = this.queue.indexOf(task);
+            if (queueIndex !== -1 && this.queue.length > COMPRESSION_MAX_QUEUE) {
+                this.queue.splice(queueIndex, 1);
+                const error: any = new Error("Compression queue is full");
+                error.statusCode = 503;
+                reject(error);
             }
         });
     }

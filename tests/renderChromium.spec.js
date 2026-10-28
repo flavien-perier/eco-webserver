@@ -41,6 +41,7 @@ class FakePage {
         this.requests = [];
         this.requestHandlers = [];
         this.closeCount = 0;
+        this.gotoOptions = null;
     }
 
     async setRequestInterception() {}
@@ -49,7 +50,8 @@ class FakePage {
         this.requestHandlers.push(handler);
     }
 
-    async goto(url) {
+    async goto(url, options) {
+        this.gotoOptions = options;
         const requests = [new FakeRequest(url, true), new FakeRequest("http://127.0.0.1:8080/script.js", false)];
 
         for (const request of requests) {
@@ -157,6 +159,8 @@ describe("renderChromium", () => {
         expect(page.requests[1].responses.length).toEqual(1);
         expect(page.requests[1].responses[0].body.toString()).toEqual("document.title = \"chromium\";");
         expect(page.requests[1].responses[0].contentType).toEqual("application/javascript");
+        expect(page.gotoOptions.waitUntil).toEqual("networkidle0");
+        expect(page.gotoOptions.timeout).toBeLessThanOrEqual(30000);
         expect(page.closeCount).toEqual(1);
     });
 
@@ -188,6 +192,67 @@ describe("renderChromium", () => {
         });
 
         expect(await renderChromium("<html></html>", "/index.html")).toBeNull();
+    });
+
+    it("Should configure waitUntil and bound the goto timeout by the rendering deadline", async () => {
+        const browser = new FakeBrowser();
+        const renderChromium = proxyquire("../src/renderChromium.cts", {
+            "puppeteer-core": { launch: async () => browser },
+            ...mockConfiguration("/usr/bin/env", {
+                chromiumRenderTimeout: 1234,
+                chromiumWaitUntil: "domcontentloaded"
+            })
+        });
+
+        expect(await renderChromium("<html></html>", "/index.html")).toEqual(RENDERED_HTML);
+        expect(browser.pages[0].gotoOptions.waitUntil).toEqual("domcontentloaded");
+        expect(browser.pages[0].gotoOptions.timeout).toBeLessThanOrEqual(1234);
+        expect(browser.pages[0].gotoOptions.timeout).toBeGreaterThan(0);
+    });
+
+    it("Should stop waiting when chromium launch exceeds the rendering deadline", async () => {
+        const renderChromium = proxyquire("../src/renderChromium.cts", {
+            "puppeteer-core": { launch: () => new Promise(() => {}) },
+            ...mockConfiguration("/usr/bin/env", { chromiumRenderTimeout: 20 })
+        });
+
+        expect(await renderChromium("<html></html>", "/index.html")).toBeNull();
+    });
+
+    it("Should recover slots after a rendering and a queued rendering time out", async () => {
+        let shouldHang = true;
+        let hangingPage;
+
+        class HangingPage extends FakePage {
+            async goto() {
+                return new Promise(() => {});
+            }
+        }
+
+        const browser = {
+            newPage: async () => {
+                if (!shouldHang) return new FakePage();
+                hangingPage = new HangingPage();
+                return hangingPage;
+            }
+        };
+        const renderChromium = proxyquire("../src/renderChromium.cts", {
+            "puppeteer-core": { launch: async () => browser },
+            ...mockConfiguration("/usr/bin/env", {
+                chromiumConcurrency: 1,
+                chromiumRenderTimeout: 30
+            })
+        });
+
+        const results = await Promise.all([
+            renderChromium("<html></html>", "/index.html"),
+            renderChromium("<html></html>", "/queued.html")
+        ]);
+        expect(results).toEqual([null, null]);
+        expect(hangingPage.closeCount).toEqual(1);
+
+        shouldHang = false;
+        expect(await renderChromium("<html></html>", "/index.html")).toEqual(RENDERED_HTML);
     });
 
     it("Should recover after a chromium disconnection", async () => {

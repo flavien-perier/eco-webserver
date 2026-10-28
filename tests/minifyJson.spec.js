@@ -7,10 +7,15 @@ const mockConfiguration = {
     "./configuration.cts": { default: { cacheDir: TEST_CACHE }, "@global": true }
 };
 
-const minifyJson = proxyquire("../src/minifyJson.cts", mockConfiguration);
+const processingCache = proxyquire("../src/processingCache.cts", mockConfiguration);
+const minifyJson = proxyquire("../src/minifyJson.cts", {
+    ...mockConfiguration,
+    "./processingCache.cts": processingCache
+});
 
 describe("minifyJson", () => {
-    afterEach(() => {
+    afterEach(async () => {
+        await processingCache.flushProcessingCache();
         fs.rmSync(TEST_CACHE, { recursive: true, force: true });
     });
 

@@ -6,10 +6,15 @@ const TEST_CACHE = "./tests/test-cache";
 const mockConfiguration = {
     "./configuration.cts": { default: { cacheDir: TEST_CACHE }, "@global": true }
 };
-const minifySvg = proxyquire("../src/minifySvg.cts", mockConfiguration);
+const processingCache = proxyquire("../src/processingCache.cts", mockConfiguration);
+const minifySvg = proxyquire("../src/minifySvg.cts", {
+    ...mockConfiguration,
+    "./processingCache.cts": processingCache
+});
 
 describe("minifySvg", () => {
-    afterEach(() => {
+    afterEach(async () => {
+        await processingCache.flushProcessingCache();
         fs.rmSync(TEST_CACHE, { recursive: true, force: true });
     });
 

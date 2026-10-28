@@ -7,10 +7,15 @@ const mockConfiguration = {
     "./configuration.cts": { default: { cacheDir: TEST_CACHE }, "@global": true }
 };
 
-const minifyHtml = proxyquire("../src/minifyHtml.cts", mockConfiguration);
+const processingCache = proxyquire("../src/processingCache.cts", mockConfiguration);
+const minifyHtml = proxyquire("../src/minifyHtml.cts", {
+    ...mockConfiguration,
+    "./processingCache.cts": { ...processingCache, "@global": true }
+});
 
 describe("minifyHtml", () => {
-    afterEach(() => {
+    afterEach(async () => {
+        await processingCache.flushProcessingCache();
         fs.rmSync(TEST_CACHE, { recursive: true, force: true });
     });
 
@@ -86,6 +91,15 @@ describe("minifyHtml", () => {
     it("Preserves comment-like text inside scripts", async () => {
         const output = await minifyHtml('<html><body><script>const marker = "<!-- keep -->";</script></body></html>', "htmlStringHash");
         expect(output).toContain("\\x3c!-- keep --\\x3e");
+    });
+
+    it("Minifies large documents and inline assets in a worker", async () => {
+        const inputHtml = `<html><head><style>.test { color: red; }</style></head><body><div>${"x".repeat(70 * 1024)}</div><script>console.log("remove"); const value = 1;</script></body></html>`;
+        const output = await minifyHtml(inputHtml, "htmlLargeHash");
+
+        expect(output).toContain(".test{color:red}");
+        expect(output).toContain("const value=1");
+        expect(output).not.toContain("console.log");
     });
 
     it("Test cache", async () => {

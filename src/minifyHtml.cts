@@ -5,6 +5,7 @@ const { minify } = require("html-minifier-terser");
 const minifyCss = require("./minifyCss.cts");
 const minifyJs = require("./minifyJs.cts");
 const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
+const { runCpuTask } = require("./cpuPool.cts");
 const Logger = require("./Logger.cts");
 
 const logger = new Logger();
@@ -26,7 +27,7 @@ module.exports = async function minifyHtml(inputHtml: string, hash: string): Pro
 
     let outputHtml;
     try {
-        outputHtml = await minify(inputHtml, {
+        outputHtml = await runCpuTask("html", inputHtml, () => minify(inputHtml, {
             caseSensitive: true,
             collapseWhitespace: true,
             keepClosingSlash: true,
@@ -37,7 +38,7 @@ module.exports = async function minifyHtml(inputHtml: string, hash: string): Pro
             removeEmptyAttributes: true,
             removeScriptTypeAttributes: false,
             removeStyleLinkTypeAttributes: true,
-        });
+        }));
     } catch(err) {
         logger.error("Html minification error", err);
         outputHtml = inputHtml;

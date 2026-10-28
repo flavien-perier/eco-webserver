@@ -4,9 +4,6 @@ const { readFile: readFileFromDisk, stat } = require("fs/promises");
 const { resolve, sep } = require("path");
 const { createHash } = require("crypto");
 
-const jsdom = require("jsdom");
-const { Script } = require("vm");
-
 const configuration = require("./configuration.cts").default;
 const getContentType = require("./getContentType.cts");
 const minifyHtml = require("./minifyHtml.cts");
@@ -18,18 +15,20 @@ const minifyXml = require("./minifyXml.cts");
 const convertImage = require("./convertImage.cts");
 const convertFont = require("./convertFont.cts");
 const renderChromium = require("./renderChromium.cts");
+const renderJsdom = require("./jsdomRenderer.cts");
 const { CompressionPool } = require("./compressionPool.cts");
+const { readProcessingCache, writeProcessingCache } = require("./processingCache.cts");
+const { preferredEncoding } = require("./contentEncoding.cts");
 const requestBuffer = require("./httpRequest.cts");
+const TaskLimiter = require("./taskLimiter.cts");
 const Logger = require("./Logger.cts");
 
 const logger = new Logger();
 
-const virtualConsole = new jsdom.VirtualConsole();
-
 /**
  * Number of workers compressing the text resources outside of the event loop.
  */
-const COMPRESSION_POOL_SIZE = Math.max(1, Number(process.env.ECO_COMPRESSION_POOL_SIZE) || 4);
+const COMPRESSION_POOL_SIZE = Math.max(1, Number(configuration.compressionPoolSize) || 4);
 
 /**
  * Compresses the text resources with `gzip` and `brotli` inside workers.
@@ -63,7 +62,11 @@ const CACHE_MAX_SIZE = Math.max(1, Number(process.env.ECO_CACHE_MAX_SIZE || conf
 const CACHE_VALIDATION_INTERVAL = Math.max(1, Number(configuration.cacheValidationInterval) || 60 * 1000);
 const PROXY_TIMEOUT = Math.max(1, Number(process.env.ECO_PROXY_TIMEOUT || configuration.proxyTimeout) || 10000);
 const PROXY_MAX_SIZE = Math.max(1, Number(process.env.ECO_PROXY_MAX_SIZE || configuration.proxyMaxSize) || 50 * 1024 * 1024);
-const SCRIPT_TIMEOUT = Math.max(1, Number(configuration.scriptTimeout) || 1000);
+const PROCESSING_CONCURRENCY = Math.max(1, Number(configuration.processingConcurrency) || 4);
+const PROCESSING_MAX_QUEUE = Math.max(0, Number(configuration.processingMaxQueue ?? 100));
+const SSR_CACHE_TTL = Math.max(0, Number(configuration.ssrCacheTtl) || 0);
+const processingLimiter = new TaskLimiter(PROCESSING_CONCURRENCY, PROCESSING_MAX_QUEUE);
+const PROXY_PREFIXES = Object.keys(configuration.proxy).sort((a, b) => b.length - a.length);
 
 /**
  * Calculates the sha256 sum of a resource.
@@ -94,9 +97,7 @@ function resolveLocalPath(filePath: string): string {
  */
 function buildProxyUrl(requestUrl: string): URL {
     const request = new URL(requestUrl, "http://localhost");
-    const requestBaseUrl = Object.keys(configuration.proxy)
-        .filter(key => request.pathname.startsWith(key))
-        .sort((a, b) => b.length - a.length)[0];
+    const requestBaseUrl = PROXY_PREFIXES.find(key => request.pathname.startsWith(key));
     const proxyUrl = new URL(configuration.proxy[requestBaseUrl]);
     const basePath = proxyUrl.pathname.endsWith("/") ? proxyUrl.pathname.slice(0, -1) : proxyUrl.pathname;
     const suffix = request.pathname.slice(requestBaseUrl.length);
@@ -141,6 +142,17 @@ function touchCachedResource(key: string, value: CacheValue): void {
 }
 
 /**
+ * Evicts least recently used entries until both cache limits are satisfied.
+ *
+ * @returns {void}
+ */
+function enforceCacheLimits(): void {
+    while (cache.size > CACHE_MAX_ENTRIES || cacheSize > CACHE_MAX_SIZE) {
+        removeCachedResource(cache.keys().next().value);
+    }
+}
+
+/**
  * Stores a resource and evicts the least recently used entries above the limits.
  *
  * @param {string} key
@@ -152,10 +164,20 @@ function storeCachedResource(key: string, value: CacheValue): void {
     removeCachedResource(key);
     cache.set(key, value);
     cacheSize += value.size;
+    enforceCacheLimits();
+}
 
-    while (cache.size > CACHE_MAX_ENTRIES || cacheSize > CACHE_MAX_SIZE) {
-        removeCachedResource(cache.keys().next().value);
-    }
+/**
+ * Reconciles the LRU size after a lazy compressed variant has been added.
+ *
+ * @param {CacheValue} value
+ * @param {number} previousSize
+ * @returns {void}
+ */
+function refreshCachedResourceSize(value: CacheValue, previousSize: number): void {
+    if (!value.cacheKey || cache.get(value.cacheKey) !== value) return;
+    cacheSize += value.size - previousSize;
+    enforceCacheLimits();
 }
 
 /**
@@ -186,16 +208,27 @@ setInterval((): void => {
 class CacheValue {
     data: string | Buffer;
     dataType: "txt" | "bin";
+    dataLength: number = 0;
     ttl: number;
     gzipData: Buffer;
     brotliData: Buffer;
+    gzipPromise: Promise<Buffer> | null = null;
+    brotliPromise: Promise<Buffer> | null = null;
     contentType: string;
     hash: string;
     size: number = 0;
+    cacheKey: string | null;
     filePath: string | null = null;
     mtimeMs: number = 0;
     lastValidated: number = 0;
     statusCode: number = 200;
+
+    /**
+     * @param {string | null} cacheKey
+     */
+    constructor(cacheKey: string | null = null) {
+        this.cacheKey = cacheKey;
+    }
 
     /**
      * Computes the total memory held by the resource variants.
@@ -203,9 +236,75 @@ class CacheValue {
      * @returns {void}
      */
     updateSize(): void {
-        this.size = Buffer.byteLength(this.data || "")
+        this.dataLength = Buffer.byteLength(this.data || "");
+        this.size = this.dataLength
             + (this.gzipData ? this.gzipData.length : 0)
             + (this.brotliData ? this.brotliData.length : 0);
+    }
+
+    /**
+     * Generates one compressed variant once and shares concurrent computations.
+     *
+     * @param {"gzip" | "br"} encoding
+     * @returns {Promise<Buffer>}
+     */
+    ensureCompression(encoding: "gzip" | "br"): Promise<Buffer> {
+        const dataProperty = encoding === "br" ? "brotliData" : "gzipData";
+        const promiseProperty = encoding === "br" ? "brotliPromise" : "gzipPromise";
+        if (this[dataProperty]) return Promise.resolve(this[dataProperty]);
+        if (this[promiseProperty]) return this[promiseProperty];
+
+        const promise = compressionPool.compress(this.data, encoding).then((compressed: any) => {
+            const previousSize = this.size;
+            const buffer = Buffer.isBuffer(compressed)
+                ? compressed
+                : encoding === "br" ? compressed.brotliData : compressed.gzipData;
+            this[dataProperty] = buffer;
+            this.updateSize();
+            refreshCachedResourceSize(this, previousSize);
+            return buffer;
+        }).finally(() => {
+            this[promiseProperty] = null;
+        });
+        this[promiseProperty] = promise;
+        return promise;
+    }
+
+    /**
+     * Generates only variants useful to the current client. Direct callers that
+     * omit Accept-Encoding retain the historical eager gzip+Brotli behavior.
+     *
+     * @param {string} [acceptEncoding]
+     * @returns {Promise<void>}
+     */
+    async prepareRequestedCompressions(acceptEncoding?: string): Promise<void> {
+        if (this.dataType !== "txt") return;
+
+        if (acceptEncoding === undefined) {
+            const previousSize = this.size;
+            const compressed = await compressionPool.compress(this.data);
+            this.gzipData = compressed.gzipData;
+            this.brotliData = compressed.brotliData;
+            this.updateSize();
+            refreshCachedResourceSize(this, previousSize);
+            return;
+        }
+
+        const encoding = preferredEncoding(acceptEncoding);
+        if (encoding) await this.ensureCompression(encoding);
+    }
+
+    /**
+     * Selects and, when necessary, lazily creates the response body.
+     *
+     * @param {string} acceptEncoding
+     * @returns {Promise<{encoding: "br" | "gzip" | false, body: string | Buffer}>}
+     */
+    async responseData(acceptEncoding: string): Promise<{ encoding: "br" | "gzip" | false; body: string | Buffer }> {
+        const encoding = this.dataType === "txt" ? preferredEncoding(acceptEncoding) : false;
+        if (encoding === "br") return { encoding, body: await this.ensureCompression("br") };
+        if (encoding === "gzip") return { encoding, body: await this.ensureCompression("gzip") };
+        return { encoding: false, body: this.data };
     }
 
     /**
@@ -214,9 +313,10 @@ class CacheValue {
      * @param {string} filePath
      * @param {string} requestUrl
      * @param {string} contentType
+     * @param {string} [acceptEncoding]
      * @returns {Promise<void>}
      */
-    async localFile(filePath: string, requestUrl: string, contentType: string): Promise<void> {
+    async localFile(filePath: string, requestUrl: string, contentType: string, acceptEncoding?: string): Promise<void> {
         this.contentType = contentType;
         this.filePath = filePath;
         const localPath = resolveLocalPath(filePath);
@@ -236,8 +336,10 @@ class CacheValue {
             this.data = originalData.toString("utf8");
             this.dataType = "txt";
 
-            if (contentType === configuration.contentType.html && configuration.enableIsomorphic)
-                this.data = await renderChromium(this.data, requestUrl) || await evaluateHtmlFile(this.data, requestUrl);
+            if (contentType === configuration.contentType.html && configuration.enableIsomorphic) {
+                const sourceHash = sha256Hex(this.data);
+                this.data = await renderHtml(this.data, requestUrl, sourceHash);
+            }
 
             this.hash = sha256Hex(this.data);
 
@@ -262,10 +364,7 @@ class CacheValue {
                     break;
             }
 
-            // Compresses only the text formats, outside of the event loop.
-            const compressed = await compressionPool.compress(this.data);
-            this.gzipData = compressed.gzipData;
-            this.brotliData = compressed.brotliData;
+            await this.prepareRequestedCompressions(acceptEncoding);
         } else {
             this.data = originalData;
             this.dataType = "bin";
@@ -280,9 +379,10 @@ class CacheValue {
      * Caching a remote file.
      *
      * @param {string} requestUrl
+     * @param {string} [acceptEncoding]
      * @returns {Promise<void>}
      */
-    async proxyFile(requestUrl: string): Promise<void> {
+    async proxyFile(requestUrl: string, acceptEncoding?: string): Promise<void> {
         const response = await requestBuffer(buildProxyUrl(requestUrl), PROXY_TIMEOUT, PROXY_MAX_SIZE);
         const buffer = response.buffer;
         const contentType = response.headers["content-type"] || getContentType(requestUrl);
@@ -293,9 +393,7 @@ class CacheValue {
             this.data = buffer.toString("utf8");
             this.dataType = "txt";
             this.contentType = contentType;
-            const compressed = await compressionPool.compress(this.data);
-            this.gzipData = compressed.gzipData;
-            this.brotliData = compressed.brotliData;
+            await this.prepareRequestedCompressions(acceptEncoding);
         } else {
             this.dataType = "bin";
             const converted = await convertResource(buffer, mimeType);
@@ -335,69 +433,35 @@ async function convertResource(data: Buffer, contentType: string): Promise<{ dat
 }
 
 /**
- * Function allowing to make a pre-rendering of the java script on the backend side.
+ * Renders HTML, optionally reusing a persistent SSR result for static sites.
  *
- * @param {string | Buffer} content
+ * @param {string} content
  * @param {string} requestUrl
+ * @param {string} sourceHash
  * @returns {Promise<string>}
  */
-async function evaluateHtmlFile(content: string, requestUrl: string): Promise<string> {
-    const dom = new jsdom.JSDOM(content, {
-        url: `http://127.0.0.1:${configuration.port}${requestUrl}`,
-        referrer: `http://127.0.0.1:${configuration.port}${requestUrl}`,
-        contentType: "text/html",
-        virtualConsole,
-        includeNodeLocations: true,
-        runScripts: "outside-only",
-    });
-    const vmContext = dom.getInternalVMContext();
-    const scripts = [...dom.window.document.getElementsByTagName("script").valueOf()];
+async function renderHtml(content: string, requestUrl: string, sourceHash: string): Promise<string> {
+    const cacheKey = sha256Hex(`ssr-v1\0${requestUrl}\0${sourceHash}`);
 
-    // Loads scripts concurrently, then executes them in document order.
-    const scriptSources = await Promise.all(scripts.map(async script => {
-        if (!script.attributes || !script.attributes.src || !script.attributes.src.value) return script.innerHTML;
-        const scriptSrc = script.attributes.src.value;
-
-        try {
-            if (/^https?:\/\//.test(scriptSrc)) {
-                const response = await requestBuffer(new URL(scriptSrc), PROXY_TIMEOUT, PROXY_MAX_SIZE);
-                return response.buffer.toString("utf8");
+    if (SSR_CACHE_TTL > 0) {
+        const cached = await readProcessingCache(cacheKey, "ssr");
+        if (cached) {
+            try {
+                const entry = JSON.parse(cached.toString());
+                if (Date.now() - entry.createdAt < SSR_CACHE_TTL && typeof entry.html === "string") {
+                    return entry.html;
+                }
+            } catch(err) {
+                // A malformed optional SSR entry is simply regenerated.
             }
-
-            const cacheValue = await readFile(scriptSrc, scriptSrc, configuration.contentType.js);
-            return cacheValue.data.toString();
-        } catch(err) {
-            logger.error(`Unable to load script ${scriptSrc}`, err);
-            return "";
-        }
-    }));
-
-    for (const scriptSource of scriptSources) {
-        try {
-            new Script(scriptSource).runInContext(vmContext, { timeout: SCRIPT_TIMEOUT });
-        } catch(err) {
-            logger.error("Error with script execution", err);
         }
     }
 
-    // Waits until the DOM is stable before serializing it.
-    return new Promise((resolve: (html: string) => void) => {
-        let increment = 0;
-        let lastComputedHtmlMd5 = "";
-
-        const loop = setInterval((): void => {
-            const computedHtml = dom.serialize();
-            const computedHtmlMd5 = createHash("md5").update(computedHtml).digest("hex");
-
-            if (lastComputedHtmlMd5 === computedHtmlMd5 || increment++ > 20) {
-                vmContext.close();
-                resolve(computedHtml);
-                clearInterval(loop);
-            } else {
-                lastComputedHtmlMd5 = computedHtmlMd5;
-            }
-        }, 100);
-    });
+    const rendered = await renderChromium(content, requestUrl) || await renderJsdom(content, requestUrl);
+    if (SSR_CACHE_TTL > 0) {
+        await writeProcessingCache(JSON.stringify({ createdAt: Date.now(), html: rendered }), cacheKey, "ssr");
+    }
+    return rendered;
 }
 
 /**
@@ -430,7 +494,7 @@ async function getResource(cacheKey: string, loader: () => Promise<CacheValue>):
 
     let pendingResource = pendingResources.get(cacheKey);
     if (!pendingResource) {
-        pendingResource = loader().then(cacheValue => {
+        pendingResource = processingLimiter.run(loader).then(cacheValue => {
             storeCachedResource(cacheKey, cacheValue);
             return cacheValue;
         }).finally(() => {
@@ -450,13 +514,14 @@ async function getResource(cacheKey: string, loader: () => Promise<CacheValue>):
  * @param {string} filePath
  * @param {string} requestUrl
  * @param {string} contentType
+ * @param {string} [acceptEncoding]
  * @returns {Promise<CacheValue>}
  */
-function readFile(filePath: string, requestUrl: string, contentType: string): Promise<CacheValue> {
+function readFile(filePath: string, requestUrl: string, contentType: string, acceptEncoding?: string): Promise<CacheValue> {
     const cacheKey = configuration.enableIsomorphic && contentType === configuration.contentType.html ? requestUrl : filePath;
     return getResource(cacheKey, async () => {
-        const cacheValue = new CacheValue();
-        await cacheValue.localFile(filePath, requestUrl, contentType);
+        const cacheValue = new CacheValue(cacheKey);
+        await cacheValue.localFile(filePath, requestUrl, contentType, acceptEncoding);
         return cacheValue;
     });
 }
@@ -465,12 +530,13 @@ function readFile(filePath: string, requestUrl: string, contentType: string): Pr
  * Retrieves the content of a remote resource.
  *
  * @param {string} requestUrl
+ * @param {string} [acceptEncoding]
  * @returns {Promise<CacheValue>}
  */
-function readProxy(requestUrl: string): Promise<CacheValue> {
+function readProxy(requestUrl: string, acceptEncoding?: string): Promise<CacheValue> {
     return getResource(requestUrl, async () => {
-        const cacheValue = new CacheValue();
-        await cacheValue.proxyFile(requestUrl);
+        const cacheValue = new CacheValue(requestUrl);
+        await cacheValue.proxyFile(requestUrl, acceptEncoding);
         return cacheValue;
     });
 }

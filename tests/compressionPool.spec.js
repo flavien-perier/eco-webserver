@@ -1,4 +1,5 @@
 const { gunzipSync, brotliDecompressSync } = require("zlib");
+const proxyquire = require("proxyquire").noPreserveCache();
 
 const { CompressionPool, compressData } = require("../src/compressionPool.cts");
 
@@ -13,6 +14,39 @@ describe("compressionPool", () => {
         expect(brotliData.length).toBeGreaterThan(0);
         expect(gunzipSync(gzipData).toString()).toEqual(input);
         expect(brotliDecompressSync(brotliData).toString()).toEqual(input);
+    });
+
+    it("Compresses data with only the requested algorithm", async () => {
+        const pool = new CompressionPool(1);
+        const input = "single encoding payload";
+
+        const gzipData = await pool.compress(input, "gzip");
+        const brotliData = await pool.compress(input, "br");
+
+        expect(Buffer.isBuffer(gzipData)).toBeTrue();
+        expect(Buffer.isBuffer(brotliData)).toBeTrue();
+        expect(gunzipSync(gzipData).toString()).toEqual(input);
+        expect(brotliDecompressSync(brotliData).toString()).toEqual(input);
+    });
+
+    it("Rejects new tasks when the compression queue is full", async () => {
+        const { CompressionPool: BoundedCompressionPool } = proxyquire("../src/compressionPool.cts", {
+            "./configuration.cts": { default: { compressionMaxQueue: 1 } }
+        });
+        const pool = new BoundedCompressionPool(1);
+        const firstTask = pool.compress("first payload");
+        const queuedTask = pool.compress("queued payload");
+
+        let rejection;
+        try {
+            await pool.compress("overflow payload");
+        } catch(err) {
+            rejection = err;
+        }
+
+        expect(rejection).toEqual(jasmine.any(Error));
+        expect(rejection.statusCode).toEqual(503);
+        await Promise.all([firstTask, queuedTask]);
     });
 
     it("Runs concurrent compressions on multiple workers", async () => {

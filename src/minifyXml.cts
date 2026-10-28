@@ -1,6 +1,7 @@
 "use strict";
 
 const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
+const { runCpuTask } = require("./cpuPool.cts");
 
 const COMMENT_MATCHER = /<!--.*?-->/gs;
 const SPACE_BETWEEN_TAGS_MATCHER = />\s+</gs;
@@ -21,7 +22,7 @@ module.exports = async function minifyXml(inputXml: string, hash: string): Promi
         return cacheXml.toString();
     }
 
-    const outputXml = inputXml
+    const outputXml = await runCpuTask("xml", inputXml, () => inputXml
         // Deletes comments
         .replace(COMMENT_MATCHER, "")
         // Removes blanks between tags.
@@ -30,7 +31,7 @@ module.exports = async function minifyXml(inputXml: string, hash: string): Promi
         .replace(NEW_LINE_MATCHER, " ")
         // Reduces the number of spaces.
         .replace(MULTIPLE_SPACE_MATCHER, " ")
-        .trim();
+        .trim());
 
     await writeProcessingCache(outputXml, hash, "xml");
 

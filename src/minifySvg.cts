@@ -3,6 +3,7 @@
 const { optimize } = require("svgo");
 
 const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
+const { runCpuTask } = require("./cpuPool.cts");
 const Logger = require("./Logger.cts");
 
 const logger = new Logger();
@@ -24,8 +25,9 @@ module.exports = async function minifySvg(inputSvg: string, hash: string): Promi
     let outputSvg;
 
     try {
-        outputSvg = optimize(inputSvg).data;
+        outputSvg = await runCpuTask("svg", inputSvg, () => optimize(inputSvg).data);
     } catch(err) {
+        if (err.statusCode === 503) throw err;
         logger.error("Svg badly formatted", err);
         outputSvg = inputSvg;
     }

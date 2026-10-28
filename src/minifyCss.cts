@@ -2,6 +2,7 @@
 
 const { minify } = require("csso");
 const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
+const { runCpuTask } = require("./cpuPool.cts");
 const Logger = require("./Logger.cts");
 
 const logger = new Logger();
@@ -22,8 +23,10 @@ module.exports = async function minifyCss(inputCss: string, hash: string): Promi
 
     let outputCss;
     try {
-        outputCss = minify(inputCss, { restructure: false }).css;
+        outputCss = await runCpuTask("css", inputCss,
+            () => minify(inputCss, { restructure: false }).css);
     } catch(err) {
+        if (err.statusCode === 503) throw err;
         logger.error("Css badly formatted", err);
         outputCss = inputCss;
     }
