@@ -13,7 +13,7 @@ describe("minifySvg", () => {
         fs.rmdirSync(TEST_CACHE, { recursive: true });
     });
 
-    it("Minify pure svg", () => {
+    it("Minify pure svg", async () => {
         const inputSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
             <!-- Test comment -->
             <metadata>Test metadata</metadata>
@@ -23,7 +23,7 @@ describe("minifySvg", () => {
 
         const fileHash = "svgHash1";
 
-        const outputSvg = minifySvg(inputSvg, fileHash);
+        const outputSvg = await minifySvg(inputSvg, fileHash);
 
         expect(outputSvg).not.toContain("Test comment");
         expect(outputSvg).not.toContain("metadata");
@@ -34,17 +34,17 @@ describe("minifySvg", () => {
         expect(outputSvg).toContain("l10 10");
     });
 
-    it("Does not minify a badly formatted svg file", () => {
+    it("Does not minify a badly formatted svg file", async () => {
         const inputSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
             <path d="M 10 10 L 20 20">
         </svg>`;
 
         const fileHash = "svgHash2";
 
-        expect(minifySvg(inputSvg, fileHash)).toEqual(inputSvg);
+        expect(await minifySvg(inputSvg, fileHash)).toEqual(inputSvg);
     });
 
-    it("Test cache", () => {
+    it("Test cache", async () => {
         const inputSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
             <!-- Test comment -->
             <path d="M 10 10 L 20 20"></path>
@@ -53,13 +53,13 @@ describe("minifySvg", () => {
         const fileHash = "svgHash3";
 
         // Processing
-        expect(minifySvg(inputSvg, fileHash)).not.toContain("Test comment");
+        expect(await minifySvg(inputSvg, fileHash)).not.toContain("Test comment");
 
         // Cache
-        expect(minifySvg(inputSvg, fileHash)).not.toContain("Test comment");
+        expect(await minifySvg(inputSvg, fileHash)).not.toContain("Test comment");
 
         // Modify cache file and read it
-        fs.writeFileSync(`${TEST_CACHE}/${fileHash}.svg`, "test");
-        expect(minifySvg(inputSvg, fileHash)).toEqual("test");
+        fs.writeFileSync(`${TEST_CACHE}/v2-${fileHash}.svg`, "test");
+        expect(await minifySvg(inputSvg, fileHash)).toEqual("test");
     });
 });

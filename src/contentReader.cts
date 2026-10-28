@@ -143,19 +143,19 @@ class CacheValue {
                     this.data = await minifyHtml(this.data, this.hash);
                     break;
                 case configuration.contentType.css:
-                    this.data = minifyCss(this.data, this.hash);
+                    this.data = await minifyCss(this.data, this.hash);
                     break;
                 case configuration.contentType.js:
                     this.data = await minifyJs(this.data, this.hash);
                     break;
                 case configuration.contentType.json:
-                    this.data = minifyJson(this.data, this.hash);
+                    this.data = await minifyJson(this.data, this.hash);
                     break;
                 case configuration.contentType.svg:
-                    this.data = minifySvg(this.data, this.hash);
+                    this.data = await minifySvg(this.data, this.hash);
                     break;
                 case configuration.contentType.xml:
-                    this.data = minifyXml(this.data, this.hash);
+                    this.data = await minifyXml(this.data, this.hash);
                     break;
             }
 

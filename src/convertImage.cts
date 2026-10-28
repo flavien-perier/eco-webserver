@@ -15,7 +15,7 @@ const logger = new Logger();
  * @returns {Promise<Buffer | null>}
  */
 module.exports = async function convertImage(inputImage: Buffer, hash: string): Promise<Buffer | null> {
-    const cacheImage = readProcessingCache(hash, "webp");
+    const cacheImage = await readProcessingCache(hash, "webp");
 
     if (cacheImage) {
         return cacheImage;

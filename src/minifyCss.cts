@@ -14,10 +14,10 @@ const CLOSING_BRACES_MATCHER = /;?\s*}\s*/gm;
  *
  * @param {string} inputCss
  * @param {string} hash
- * @returns {string}
+ * @returns {Promise<string>}
  */
-module.exports = function minifyCss(inputCss: string, hash: string): string {
-    const cacheCss = readProcessingCache(hash, "css");
+module.exports = async function minifyCss(inputCss: string, hash: string): Promise<string> {
+    const cacheCss = await readProcessingCache(hash, "css");
 
     if (cacheCss) {
         return cacheCss.toString();
@@ -37,7 +37,7 @@ module.exports = function minifyCss(inputCss: string, hash: string): string {
         // Closing braces.
         .replace(CLOSING_BRACES_MATCHER, "}");
 
-    writeProcessingCache(outputCss, hash, "css");
+    await writeProcessingCache(outputCss, hash, "css");
 
     return outputCss;
 }

@@ -15,7 +15,7 @@ const logger = new Logger();
  * @returns {Promise<Buffer | null>}
  */
 module.exports = async function convertFont(inputFont: Buffer, hash: string): Promise<Buffer | null> {
-    const cacheFont = readProcessingCache(hash, "woff2");
+    const cacheFont = await readProcessingCache(hash, "woff2");
 
     if (cacheFont) {
         return cacheFont;

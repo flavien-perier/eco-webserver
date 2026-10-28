@@ -12,10 +12,10 @@ const MULTIPLE_SPACE_MATCHER = / {2,}/g;
  *
  * @param {string} inputXml
  * @param {string} hash
- * @returns {string}
+ * @returns {Promise<string>}
  */
-module.exports = function minifyXml(inputXml: string, hash: string): string {
-    const cacheXml = readProcessingCache(hash, "xml");
+module.exports = async function minifyXml(inputXml: string, hash: string): Promise<string> {
+    const cacheXml = await readProcessingCache(hash, "xml");
 
     if (cacheXml) {
         return cacheXml.toString();
@@ -32,7 +32,7 @@ module.exports = function minifyXml(inputXml: string, hash: string): string {
         .replace(MULTIPLE_SPACE_MATCHER, " ")
         .trim();
 
-    writeProcessingCache(outputXml, hash, "xml");
+    await writeProcessingCache(outputXml, hash, "xml");
 
     return outputXml;
 }

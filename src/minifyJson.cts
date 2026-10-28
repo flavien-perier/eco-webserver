@@ -10,10 +10,10 @@ const logger = new Logger();
  *
  * @param {string} inputJson
  * @param {string} hash
- * @returns {string}
+ * @returns {Promise<string>}
  */
-module.exports = function minifyJson(inputJson: string, hash: string): string {
-    const cacheJson = readProcessingCache(hash, "json");
+module.exports = async function minifyJson(inputJson: string, hash: string): Promise<string> {
+    const cacheJson = await readProcessingCache(hash, "json");
 
     if (cacheJson) {
         return cacheJson.toString();
@@ -28,7 +28,7 @@ module.exports = function minifyJson(inputJson: string, hash: string): string {
         outputJson = inputJson;
     }
 
-    writeProcessingCache(outputJson, hash, "json");
+    await writeProcessingCache(outputJson, hash, "json");
 
     return outputJson;
 }

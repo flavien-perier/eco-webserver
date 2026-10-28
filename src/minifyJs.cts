@@ -15,7 +15,7 @@ const logger = new Logger();
  * @returns {Promise<string>}
  */
 module.exports = async function minifyJs(inputJs: string, hash: string): Promise<string> {
-    const cacheJs = readProcessingCache(hash, "js");
+    const cacheJs = await readProcessingCache(hash, "js");
 
     if (cacheJs) {
         return cacheJs.toString();
@@ -43,7 +43,7 @@ module.exports = async function minifyJs(inputJs: string, hash: string): Promise
         outputJs = result.code;
     }
 
-    writeProcessingCache(outputJs, hash, "js");
+    await writeProcessingCache(outputJs, hash, "js");
 
     return outputJs;
 }

@@ -20,6 +20,26 @@ const DELETED_PARAMETERS = [
 ];
 
 /**
+ * Replaces regular expression matches with asynchronously computed values.
+ *
+ * @param {string} input
+ * @param {RegExp} matcher
+ * @param {Function} replacer
+ * @returns {Promise<string>}
+ */
+async function replaceAsync(input: string, matcher: RegExp, replacer: (...match: any[]) => Promise<string>): Promise<string> {
+    const matches = [...input.matchAll(matcher)];
+    const replacements = await Promise.all(matches.map(match => replacer(...match)));
+    let output = input;
+
+    matches.forEach((match, index) => {
+        output = output.replace(match[0], replacements[index]);
+    });
+
+    return output;
+}
+
+/**
  * Reforms a HTML page.
  *
  * @param {string} inputHtml
@@ -27,7 +47,7 @@ const DELETED_PARAMETERS = [
  * @returns {Promise<string>}
  */
 module.exports = async function minifyHtml(inputHtml: string, hash: string): Promise<string> {
-    const cacheHtml = readProcessingCache(hash, "html");
+    const cacheHtml = await readProcessingCache(hash, "html");
 
     if (cacheHtml) {
         return cacheHtml.toString();
@@ -54,28 +74,16 @@ module.exports = async function minifyHtml(inputHtml: string, hash: string): Pro
         // Reformatting html closing tags.
         .replace(CLOSING_TAG_MATCHER, (_, baliseName) => `</${baliseName}>`)
         // Removes blanks between tags.
-        .replace(BLANK_SPACE_BETWEEN_TAGS_MATCHER, "><")
-        // Reformatting css.
-        .replace(STYLE_TAG_MATCHER, (_, balise, code) => `${balise}${minifyCss(code, hash)}</style>`);
+        .replace(BLANK_SPACE_BETWEEN_TAGS_MATCHER, "><");
 
-    // Reformatting js.
-    await new Promise((resolve, reject) => {
-        const scriptTags = [...outputHtml.match(SCRIPT_TAG_MATCHER) || []].filter(element => element != "");
-        let countTasks = 0;
-        if (scriptTags.length == 0) {
-            resolve();
-            return;
-        }
+    outputHtml = await replaceAsync(outputHtml, STYLE_TAG_MATCHER, async (_, balise, code) =>
+        `${balise}${await minifyCss(code, hash)}</style>`
+    );
+    outputHtml = await replaceAsync(outputHtml, SCRIPT_TAG_MATCHER, async (_, balise, code) =>
+        `${balise}${await minifyJs(code || "", hash)}</script>`
+    );
 
-        scriptTags.map(scriptTag => new RegExp(SCRIPT_TAG_MATCHER).exec(scriptTag)).forEach(async ([fullMatch, balise, code]) => {
-            outputHtml = outputHtml.replace(fullMatch, `${balise}${await minifyJs(code || "", hash)}</script>`);
-            if (++countTasks >= scriptTags.length) {
-                resolve();
-            }
-        });
-    });
-
-    writeProcessingCache(outputHtml, hash, "html");
+    await writeProcessingCache(outputHtml, hash, "html");
 
     return outputHtml;
-}
+};

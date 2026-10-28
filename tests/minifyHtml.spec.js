@@ -101,7 +101,7 @@ describe("minifyHtml", () => {
         expect(await minifyHtml(inputHtml, fileHash)).toEqual(expectedHtml);
 
         // Modify cache file and read it
-        fs.writeFileSync(`${TEST_CACHE}/${fileHash}.html`, "test");
+        fs.writeFileSync(`${TEST_CACHE}/v2-${fileHash}.html`, "test");
         expect(await minifyHtml(inputHtml, fileHash)).toEqual("test");
     });
 });

@@ -13,7 +13,7 @@ describe("minifyCss", () => {
         fs.rmdirSync(TEST_CACHE, { recursive: true });
     });
 
-    it("Minify pure css", () => {
+    it("Minify pure css", async () => {
         const inputCss = `a:hover {
             border-radius : 1px;
             border: 1px solid #000;
@@ -28,10 +28,10 @@ describe("minifyCss", () => {
 
         const expectedCss = "a:hover{border-radius:1px;border:1px solid #000}.test{background-color:blue}";
 
-        expect(minifyCss(inputCss, fileHash)).toEqual(expectedCss);
+        expect(await minifyCss(inputCss, fileHash)).toEqual(expectedCss);
     });
 
-    it("Test cache", () => {
+    it("Test cache", async () => {
         const inputCss = `a:hover {
             border-radius : 1px;
             border: 1px solid #000;
@@ -47,14 +47,14 @@ describe("minifyCss", () => {
         const expectedCss = "a:hover{border-radius:1px;border:1px solid #000}.test{background-color:blue}";
 
         // Processing
-        expect(minifyCss(inputCss, fileHash)).toEqual(expectedCss);
+        expect(await minifyCss(inputCss, fileHash)).toEqual(expectedCss);
 
         // Cache
-        expect(minifyCss(inputCss, fileHash)).toEqual(expectedCss);
+        expect(await minifyCss(inputCss, fileHash)).toEqual(expectedCss);
 
         // Modify cache file and read it
         
-        fs.writeFileSync(`${TEST_CACHE}/${fileHash}.css`, "test");
-        expect(minifyCss(inputCss, fileHash)).toEqual("test");
+        fs.writeFileSync(`${TEST_CACHE}/v2-${fileHash}.css`, "test");
+        expect(await minifyCss(inputCss, fileHash)).toEqual("test");
     });
 });

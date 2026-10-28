@@ -46,7 +46,7 @@ describe("convertFont", () => {
         expect(await convertFont(otf, fileHash)).toEqual(woff2);
 
         // Modify cache file and read it
-        fs.writeFileSync(`${TEST_CACHE}/${fileHash}.woff2`, "test");
+        fs.writeFileSync(`${TEST_CACHE}/v2-${fileHash}.woff2`, "test");
         expect(await convertFont(otf, fileHash)).toEqual(Buffer.from("test"));
     });
 });

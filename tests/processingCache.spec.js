@@ -11,20 +11,31 @@ const processingCache = proxyquire("../src/processingCache.cts", mockConfigurati
 
 describe("processingCache", () => {
     afterEach(() => {
-        fs.rmdirSync(TEST_CACHE, { recursive: true });
+        fs.rmSync(TEST_CACHE, { recursive: true, force: true });
     });
 
-    it("Cache a process and recover the value", () => {
+    it("Caches a process and recovers the value", async () => {
         const afterProcessing = "Result after work";
         const hash = "processingCacheHash";
 
-        // Test if the data is in the cache
-        expect(processingCache.readProcessingCache(hash, "js")).toBeNull();
+        expect(await processingCache.readProcessingCache(hash, "js")).toBeNull();
 
-        // Put the data in the cache
-        processingCache.writeProcessingCache(afterProcessing, hash, "js");
+        await processingCache.writeProcessingCache(afterProcessing, hash, "js");
 
-        // Retrieve the data
-        expect(processingCache.readProcessingCache(hash, "js").toString()).toEqual(afterProcessing);
+        expect((await processingCache.readProcessingCache(hash, "js")).toString()).toEqual(afterProcessing);
+        expect(fs.readdirSync(TEST_CACHE)).toEqual([`v2-${hash}.js`]);
+    });
+
+    it("Evicts the oldest artefacts above the configured size", async () => {
+        await processingCache.writeProcessingCache("old cache contents", "old", "js");
+        await processingCache.writeProcessingCache("new", "new", "js");
+        const oldPath = `${TEST_CACHE}/v2-old.js`;
+        const oldDate = new Date(Date.now() - 60000);
+        fs.utimesSync(oldPath, oldDate, oldDate);
+
+        await processingCache.cleanProcessingCache(3);
+
+        expect(fs.existsSync(oldPath)).toBeFalse();
+        expect(fs.existsSync(`${TEST_CACHE}/v2-new.js`)).toBeTrue();
     });
 });

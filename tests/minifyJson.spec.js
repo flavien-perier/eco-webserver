@@ -14,7 +14,7 @@ describe("minifyJson", () => {
         fs.rmdirSync(TEST_CACHE, { recursive: true });
     });
 
-    it("Minify json file", () => {
+    it("Minify json file", async () => {
         const inputJson = `{
             "number": 3.22,
             "string": "hello world {1, 2, 3}",
@@ -31,20 +31,20 @@ describe("minifyJson", () => {
 
         const expectedJson = '{"number":3.22,"string":"hello world {1, 2, 3}","table":[1,2,3,4,5,6],"object":{"key":"value"}}';
 
-        expect(minifyJson(inputJson, fileHash)).toEqual(expectedJson);
+        expect(await minifyJson(inputJson, fileHash)).toEqual(expectedJson);
     });
 
-    it("Does not minify a badly formatted json file", () => {
+    it("Does not minify a badly formatted json file", async () => {
         const inputJson = `{
             "key": "value"
         }{"other-key": "value"}`;
 
         const fileHash = "jsonHash2";
 
-        expect(minifyJson(inputJson, fileHash)).toEqual(inputJson);
+        expect(await minifyJson(inputJson, fileHash)).toEqual(inputJson);
     });
 
-    it("Test cache", () => {
+    it("Test cache", async () => {
         const inputJson = `{
             "number": 3.22,
             "string": "hello world {1, 2, 3}",
@@ -62,13 +62,13 @@ describe("minifyJson", () => {
         const expectedJson = '{"number":3.22,"string":"hello world {1, 2, 3}","table":[1,2,3,4,5,6],"object":{"key":"value"}}';
 
         // Processing
-        expect(minifyJson(inputJson, fileHash)).toEqual(expectedJson);
+        expect(await minifyJson(inputJson, fileHash)).toEqual(expectedJson);
 
         // Cache
-        expect(minifyJson(inputJson, fileHash)).toEqual(expectedJson);
+        expect(await minifyJson(inputJson, fileHash)).toEqual(expectedJson);
 
         // Modify cache file and read it
-        fs.writeFileSync(`${TEST_CACHE}/${fileHash}.json`, "test");
-        expect(minifyJson(inputJson, fileHash)).toEqual("test");
+        fs.writeFileSync(`${TEST_CACHE}/v2-${fileHash}.json`, "test");
+        expect(await minifyJson(inputJson, fileHash)).toEqual("test");
     });
 });

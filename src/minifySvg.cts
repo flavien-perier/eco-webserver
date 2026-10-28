@@ -12,10 +12,10 @@ const logger = new Logger();
  *
  * @param {string} inputSvg
  * @param {string} hash
- * @returns {string}
+ * @returns {Promise<string>}
  */
-module.exports = function minifySvg(inputSvg: string, hash: string): string {
-    const cacheSvg = readProcessingCache(hash, "svg");
+module.exports = async function minifySvg(inputSvg: string, hash: string): Promise<string> {
+    const cacheSvg = await readProcessingCache(hash, "svg");
 
     if (cacheSvg) {
         return cacheSvg.toString();
@@ -30,7 +30,7 @@ module.exports = function minifySvg(inputSvg: string, hash: string): string {
         outputSvg = inputSvg;
     }
 
-    writeProcessingCache(outputSvg, hash, "svg");
+    await writeProcessingCache(outputSvg, hash, "svg");
 
     return outputSvg;
 }
