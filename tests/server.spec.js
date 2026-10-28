@@ -109,6 +109,34 @@ describe("server", () => {
                 });
         });
 
+        it("Should serve a static file with a query string", done => {
+            supertest(proxyquire("../src/server.cts", mockConfiguration)())
+                .get("/test.svg?v=123")
+                .expect(200)
+                .expect("Content-Type", "image/svg+xml")
+                .expect("Vary", "Accept-Encoding")
+                .end(err => {
+                    expect(err).toBeNull();
+                    done();
+                });
+        });
+
+        it("Should keep directory traversal inside the dist directory", async () => {
+            const server = proxyquire("../src/server.cts", mockConfiguration)();
+            await new Promise(resolve => server.listen(0, resolve));
+
+            try {
+                const { statusCode, body } = await requestRaw(server, "/../../../package.json");
+                expect(statusCode).toEqual(200);
+                expect(body.toString()).not.toContain('"name": "eco-webserver"');
+            } finally {
+                await new Promise(resolve => {
+                    server.close(resolve);
+                    server.closeAllConnections();
+                });
+            }
+        });
+
         it("Should display a page with a redirection", done => {
             supertest(proxyquire("../src/server.cts", mockConfiguration)())
                 .get("/redirection")
@@ -573,6 +601,16 @@ describe("server", () => {
             expect(statusCode).toEqual(200);
             expect(headers["content-encoding"]).toEqual("gzip");
             expect(svg).toContain("<path");
+        });
+
+        it("Should respect refused encodings and expose cache variance", async () => {
+            const { statusCode, headers, body } = await requestRaw(server, "/test.svg", { "Accept-Encoding": "br;q=0, gzip;q=0" });
+
+            expect(statusCode).toEqual(200);
+            expect(headers["content-encoding"]).toBeUndefined();
+            expect(headers.vary).toEqual("Accept-Encoding");
+            expect(Number(headers["content-length"])).toEqual(body.length);
+            expect(body.toString()).toContain("<path");
         });
 
         it("Should send a text file without compression", async () => {

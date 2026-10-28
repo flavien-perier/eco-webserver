@@ -19,6 +19,7 @@ describe("buildHeader", () => {
         expect(header).toEqual({
             "test": "123",
             "Content-Type": "text/html",
+            "Vary": "Accept-Encoding",
             "Content-Encoding": "gzip",
             "ETag": "hashValue",
         });
@@ -30,6 +31,7 @@ describe("buildHeader", () => {
         expect(header).toEqual({
             "test": "123",
             "Content-Type": "text/html",
+            "Vary": "Accept-Encoding",
             "Content-Encoding": "br",
             "ETag": "hashValue",
         });
@@ -41,6 +43,7 @@ describe("buildHeader", () => {
         expect(header).toEqual({
             "test": "123",
             "Content-Type": "text/html",
+            "Vary": "Accept-Encoding",
             "ETag": "hashValue",
         });
     });

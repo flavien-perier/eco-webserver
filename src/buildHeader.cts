@@ -14,6 +14,7 @@ module.exports = function buildHeader(contentType: string, encoding: "br" | "gzi
     const header: { [header: string]: string } = {
         ...configuration.header,
         "Content-Type": contentType,
+        "Vary": "Accept-Encoding",
     };
 
     if (encoding) {

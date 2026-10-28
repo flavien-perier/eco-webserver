@@ -15,7 +15,7 @@ module.exports = function getContentType(filePath: string): string {
         return configuration.contentType.html;
     }
 
-    const extension = parsing[1];
+    const extension = parsing[1].toLowerCase();
 
     if (extension && configuration.contentType[extension]) {
         return configuration.contentType[extension];
