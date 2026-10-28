@@ -26,9 +26,14 @@ describe("minifyCss", () => {
 
         const fileHash = "cssHash1";
 
-        const expectedCss = "a:hover{border-radius:1px;border:1px solid #000}.test{background-color:blue}";
+        const expectedCss = "a:hover{border-radius:1px;border:1px solid #000}.test{background-color:#00f}";
 
         expect(await minifyCss(inputCss, fileHash)).toEqual(expectedCss);
+    });
+
+    it("Preserves comment-like text inside strings", async () => {
+        const output = await minifyCss('.test::after { content: "/* keep */ : { }"; }', "cssStringHash");
+        expect(output).toContain("/* keep */ : { }");
     });
 
     it("Test cache", async () => {
@@ -44,7 +49,7 @@ describe("minifyCss", () => {
 
         const fileHash = "cssHash2";
 
-        const expectedCss = "a:hover{border-radius:1px;border:1px solid #000}.test{background-color:blue}";
+        const expectedCss = "a:hover{border-radius:1px;border:1px solid #000}.test{background-color:#00f}";
 
         // Processing
         expect(await minifyCss(inputCss, fileHash)).toEqual(expectedCss);

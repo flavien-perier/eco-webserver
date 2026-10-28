@@ -33,21 +33,3 @@ export interface Configuration {
     proxy: { [urlPrefix: string]: string };
     use404File: boolean;
 }
-
-/**
- * Request sent to a text worker.
- */
-export interface WorkerRequest {
-    id: number;
-    action: string;
-    payload: string;
-}
-
-/**
- * Response of a text worker.
- */
-export interface WorkerResponse {
-    id: number;
-    data?: string | Buffer;
-    error?: string;
-}

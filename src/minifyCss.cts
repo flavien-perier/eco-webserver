@@ -1,16 +1,13 @@
 "use strict";
 
+const { minify } = require("csso");
 const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
+const Logger = require("./Logger.cts");
 
-const COMMENT_MATCHER = /\/\*.*?\*\//gs;
-const BEGINNING_SAPCE_MATCHER = /^\s*/gm;
-const NEW_LINE_MATCHER = /[\n|\t]/g;
-const SPACE_BETWEEN_KEY_AND_VALUE_MATCHER = /\s*:\s*/gm;
-const OPENING_BRACES_MATCHER = /\s*{\s*/gm;
-const CLOSING_BRACES_MATCHER = /;?\s*}\s*/gm;
+const logger = new Logger();
 
 /**
- * Reforms a CSS style page.
+ * Reforms a CSS style page with a CSS parser.
  *
  * @param {string} inputCss
  * @param {string} hash
@@ -23,21 +20,15 @@ module.exports = async function minifyCss(inputCss: string, hash: string): Promi
         return cacheCss.toString();
     }
 
-    const outputCss = inputCss
-        // Deletes comments
-        .replace(COMMENT_MATCHER, "")
-        // Removes spaces at the beginning of the line.
-        .replace(BEGINNING_SAPCE_MATCHER, "")
-        // Deletes new lines.
-        .replace(NEW_LINE_MATCHER, "")
-        // Removes the spaces between the key and the value.
-        .replace(SPACE_BETWEEN_KEY_AND_VALUE_MATCHER, ":")
-        // Opening braces.
-        .replace(OPENING_BRACES_MATCHER, "{")
-        // Closing braces.
-        .replace(CLOSING_BRACES_MATCHER, "}");
+    let outputCss;
+    try {
+        outputCss = minify(inputCss, { restructure: false }).css;
+    } catch(err) {
+        logger.error("Css badly formatted", err);
+        outputCss = inputCss;
+    }
 
     await writeProcessingCache(outputCss, hash, "css");
 
     return outputCss;
-}
+};

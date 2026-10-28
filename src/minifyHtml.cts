@@ -1,46 +1,17 @@
 "use strict";
 
+const { createHash } = require("crypto");
+const { minify } = require("html-minifier-terser");
 const minifyCss = require("./minifyCss.cts");
 const minifyJs = require("./minifyJs.cts");
 const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
+const Logger = require("./Logger.cts");
 
-const COMMENT_MATCHER = /<!--.*?-->/gs;
-const BEGINNING_SAPCE_MATCHER = /^\s*/gm;
-const OPENING_TAG_MATCHER = /<([\w\d-_]+)((?:\s+[\w\d-_]+(?:\s*=\s*(?:["'].*?["']|[^ >]*))?)*)\s*?(\/)?\s*?>/sg;
-const KEY_VALUE_MATCHER = /([\w\d-_]+)(?: *= *(["'].*?["']|\S*))?/sg;
-const CLOSING_TAG_MATCHER = /<\s*\/\s*([\w\d-_]+)>/sg;
-const BLANK_SPACE_BETWEEN_TAGS_MATCHER = />\s+</sg;
-const STYLE_TAG_MATCHER = /(<style.*?>)(.*?)<\/style>/sg;
-const SCRIPT_TAG_MATCHER = /(<script.*?>)(.*?)<\/script>/sg;
-
-const DELETED_PARAMETERS = [
-    "script:charset",
-    "style:type",
-    "style:charset"
-];
+const logger = new Logger();
+const contentHash = (content: string): string => createHash("sha256").update(content).digest("hex");
 
 /**
- * Replaces regular expression matches with asynchronously computed values.
- *
- * @param {string} input
- * @param {RegExp} matcher
- * @param {Function} replacer
- * @returns {Promise<string>}
- */
-async function replaceAsync(input: string, matcher: RegExp, replacer: (...match: any[]) => Promise<string>): Promise<string> {
-    const matches = [...input.matchAll(matcher)];
-    const replacements = await Promise.all(matches.map(match => replacer(...match)));
-    let output = input;
-
-    matches.forEach((match, index) => {
-        output = output.replace(match[0], replacements[index]);
-    });
-
-    return output;
-}
-
-/**
- * Reforms a HTML page.
+ * Reforms a HTML page with an HTML parser.
  *
  * @param {string} inputHtml
  * @param {string} hash
@@ -53,35 +24,24 @@ module.exports = async function minifyHtml(inputHtml: string, hash: string): Pro
         return cacheHtml.toString();
     }
 
-    let outputHtml = inputHtml
-        // Deletes comments
-        .replace(COMMENT_MATCHER, "")
-        // Removes spaces at the beginning of the line.
-        .replace(BEGINNING_SAPCE_MATCHER, "")
-        // Reformatting html opening tags.
-        .replace(OPENING_TAG_MATCHER, (_, baliseName, parameters, end) => {
-            // Reformatting tags parameters.
-            const parametersList: string[] = [];
-            parameters.replace(KEY_VALUE_MATCHER, (_, key: string, value: string) => {
-                if (value == null) parametersList.push(key);
-                else if (value == "\"\"" || value == "''" || value == "") {}
-                else if (DELETED_PARAMETERS.indexOf(`${baliseName}:${key}`) != -1) {}
-                else if (value.search(" ") == -1 && value.search("=") == -1) parametersList.push(`${key}=${value.replace(/["`]/sg, "")}`);
-                else parametersList.push(`${key}=${value}`);
-            });
-            return `<${baliseName}${parametersList.length > 0 ? " " : ""}${parametersList.join(" ")}${end || ""}>`;
-        })
-        // Reformatting html closing tags.
-        .replace(CLOSING_TAG_MATCHER, (_, baliseName) => `</${baliseName}>`)
-        // Removes blanks between tags.
-        .replace(BLANK_SPACE_BETWEEN_TAGS_MATCHER, "><");
-
-    outputHtml = await replaceAsync(outputHtml, STYLE_TAG_MATCHER, async (_, balise, code) =>
-        `${balise}${await minifyCss(code, hash)}</style>`
-    );
-    outputHtml = await replaceAsync(outputHtml, SCRIPT_TAG_MATCHER, async (_, balise, code) =>
-        `${balise}${await minifyJs(code || "", hash)}</script>`
-    );
+    let outputHtml;
+    try {
+        outputHtml = await minify(inputHtml, {
+            caseSensitive: true,
+            collapseWhitespace: true,
+            keepClosingSlash: true,
+            minifyCSS: code => minifyCss(code, contentHash(code)),
+            minifyJS: code => minifyJs(code, contentHash(code)),
+            removeAttributeQuotes: true,
+            removeComments: true,
+            removeEmptyAttributes: true,
+            removeScriptTypeAttributes: false,
+            removeStyleLinkTypeAttributes: true,
+        });
+    } catch(err) {
+        logger.error("Html minification error", err);
+        outputHtml = inputHtml;
+    }
 
     await writeProcessingCache(outputHtml, hash, "html");
 
