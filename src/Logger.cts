@@ -1,8 +1,10 @@
 "use strict";
 
-const { appendFileSync } = require("fs");
+const { appendFile } = require("fs/promises");
 
 const configuration = require("./configuration.cts").default;
+
+const MAX_BUFFERED_LOGS = 10000;
 
 /**
  * Contains logs that have not yet been written to the log file.
@@ -10,14 +12,35 @@ const configuration = require("./configuration.cts").default;
  * @type {string[]}
  */
 let logBuffer: string[] = [];
+let droppedLogs = 0;
+let flushing = false;
 
 /**
- * Empty the log buffer at regular time interval in the log file.
+ * Empties the log buffer with one asynchronous append.
+ *
+ * @returns {Promise<void>}
  */
-setInterval((): void => {
-    logBuffer.forEach(message => appendFileSync(configuration.logDir, message + "\n"));
+async function flushLogs(): Promise<void> {
+    if (flushing || (logBuffer.length === 0 && droppedLogs === 0)) return;
+    flushing = true;
+
+    const messages = logBuffer;
     logBuffer = [];
-}, 60 * 1000);
+    if (droppedLogs > 0) {
+        messages.unshift(`error: [${new Date().toISOString()}] ${droppedLogs} log messages dropped because the buffer was full`);
+        droppedLogs = 0;
+    }
+
+    try {
+        await appendFile(configuration.logDir, messages.join("\n") + "\n");
+    } catch(err) {
+        console.error("Unable to write application logs", err);
+    } finally {
+        flushing = false;
+    }
+}
+
+setInterval(flushLogs, 60 * 1000);
 
 /**
  * Displays the content of a log in the console and adds this same log to the log buffer.
@@ -28,7 +51,9 @@ setInterval((): void => {
 function print(logLevel: string, logMessage: string): void {
     const message = `${logLevel}: [${new Date().toISOString()}] ${logMessage}`;
     console.log(message);
-    logBuffer.push(message);
+
+    if (logBuffer.length < MAX_BUFFERED_LOGS) logBuffer.push(message);
+    else droppedLogs++;
 }
 
 /**
@@ -38,7 +63,7 @@ module.exports = class Logger {
     constructor() {}
 
     /**
-     * Format a log to display a piece of information.
+     * Format the log to display a piece of information.
      *
      * @param {string} message
      * @returns {void}
@@ -48,7 +73,7 @@ module.exports = class Logger {
     }
 
     /**
-     * Format a log for an error message.
+     * Format the log to display an error message.
      *
      * @param {string} message
      * @param {any} error
@@ -73,4 +98,4 @@ module.exports = class Logger {
     http(ip: string, userAgent: string, method: string, url: string): void {
         print("http", `[${ip}] [${userAgent}] - ${method}: ${url}`);
     }
-}
+};

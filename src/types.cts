@@ -15,6 +15,11 @@ export interface Configuration {
     cacheCycle: string | number;
     distDir: string;
     cacheDir: string;
+    cacheMaxEntries: number;
+    cacheMaxSize: number;
+    cacheValidationInterval: number;
+    diskCacheMaxSize: number;
+    diskCacheCleanupInterval: number;
     logDir: string;
     enableIsomorphic: boolean;
     chromiumPath: string | null;

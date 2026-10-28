@@ -44,6 +44,16 @@ module.exports.default = {
      */
     cacheDir: process.env.ECO_CACHE_DIR || ecoconf.cacheDir || "/tmp/eco-webserver",
 
+    cacheMaxEntries: Number(process.env.ECO_CACHE_MAX_ENTRIES || ecoconf.cacheMaxEntries) || 1000,
+
+    cacheMaxSize: Number(process.env.ECO_CACHE_MAX_SIZE || ecoconf.cacheMaxSize) || 100 * 1024 * 1024,
+
+    cacheValidationInterval: Number(ecoconf.cacheValidationInterval) || 60 * 1000,
+
+    diskCacheMaxSize: Number(process.env.ECO_DISK_CACHE_MAX_SIZE || ecoconf.diskCacheMaxSize) || 512 * 1024 * 1024,
+
+    diskCacheCleanupInterval: Number(ecoconf.diskCacheCleanupInterval) || 60 * 60 * 1000,
+
     /**
      * @type {string}
      */

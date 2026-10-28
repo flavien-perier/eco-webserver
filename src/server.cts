@@ -2,7 +2,7 @@
 
 const http = require("http");
 
-const { existsSync, lstatSync } = require("fs");
+const { lstat } = require("fs/promises");
 const { resolve, sep } = require("path");
 
 const configuration = require("./configuration.cts").default;
@@ -77,6 +77,21 @@ function resolveRequestPath(requestUrl: string): { requestPath: string; filePath
 }
 
 /**
+ * Checks whether a path is a regular file without following symbolic links.
+ *
+ * @param {string} filePath
+ * @returns {Promise<boolean>}
+ */
+async function isFile(filePath: string): Promise<boolean> {
+    try {
+        return (await lstat(filePath)).isFile();
+    } catch(err) {
+        if (err.code === "ENOENT") return false;
+        throw err;
+    }
+}
+
+/**
  * Eco-webserver
  *
  * @returns {http.Server}
@@ -99,7 +114,7 @@ module.exports = (): http.Server => {
 
             if (proxyPrefix) {
                 content = await readProxy(requestUrl);
-            } else if (existsSync(filePath) && lstatSync(filePath).isFile()) {
+            } else if (await isFile(filePath)) {
                 const contentType = getContentType(requestPath);
                 content = await readFile(requestPath, requestPath, contentType);
             } else if (configuration.use404File) {

@@ -3,9 +3,9 @@
 const http = require("http");
 const https = require("https");
 
-const { readFileSync } = require("fs");
+const { readFile: readFileFromDisk, stat } = require("fs/promises");
 const { parse } = require("url");
-const { join } = require("path");
+const { resolve, sep } = require("path");
 const { createHash } = require("crypto");
 
 const jsdom = require("jsdom");
@@ -61,6 +61,9 @@ const WOFF2_CONVERSION_CONTENT_TYPE: string[] = [
 ];
 const CONVERTIBLE_CONTENT_TYPE: string[] = [...WEBP_CONVERSION_CONTENT_TYPE, ...WOFF2_CONVERSION_CONTENT_TYPE];
 const MAX_TTL = 10;
+const CACHE_MAX_ENTRIES = Math.max(1, Number(process.env.ECO_CACHE_MAX_ENTRIES || configuration.cacheMaxEntries) || 1000);
+const CACHE_MAX_SIZE = Math.max(1, Number(process.env.ECO_CACHE_MAX_SIZE || configuration.cacheMaxSize) || 100 * 1024 * 1024);
+const CACHE_VALIDATION_INTERVAL = Math.max(1, Number(configuration.cacheValidationInterval) || 60 * 1000);
 
 /**
  * Calculates the sha256 sum of a resource.
@@ -71,11 +74,68 @@ const MAX_TTL = 10;
 const sha256Hex = (data: string | Buffer): string => createHash("sha256").update(data || "").digest("hex");
 
 /**
+ * Resolves a local resource without allowing it to escape distDir.
+ *
+ * @param {string} filePath
+ * @returns {string}
+ */
+function resolveLocalPath(filePath: string): string {
+    const distDir = resolve(configuration.distDir);
+    const localPath = resolve(distDir, `.${filePath.startsWith("/") ? filePath : `/${filePath}`}`);
+    if (localPath !== distDir && !localPath.startsWith(distDir + sep)) throw new Error("Invalid resource path");
+    return localPath;
+}
+
+/**
  * Associates a URL with its content in the cache.
  *
  * @type {Map<string, CacheValue>}
  */
 const cache = new Map<string, CacheValue>();
+let cacheSize = 0;
+
+/**
+ * Removes a resource and updates the tracked cache size.
+ *
+ * @param {string} key
+ * @returns {void}
+ */
+function removeCachedResource(key: string): void {
+    const value = cache.get(key);
+    if (!value) return;
+    cache.delete(key);
+    cacheSize -= value.size;
+}
+
+/**
+ * Marks a cached resource as recently used.
+ *
+ * @param {string} key
+ * @param {CacheValue} value
+ * @returns {void}
+ */
+function touchCachedResource(key: string, value: CacheValue): void {
+    cache.delete(key);
+    cache.set(key, value);
+}
+
+/**
+ * Stores a resource and evicts the least recently used entries above the limits.
+ *
+ * @param {string} key
+ * @param {CacheValue} value
+ * @returns {void}
+ */
+function storeCachedResource(key: string, value: CacheValue): void {
+    if (value.size > CACHE_MAX_SIZE) return;
+    removeCachedResource(key);
+    cache.set(key, value);
+    cacheSize += value.size;
+
+    while (cache.size > CACHE_MAX_ENTRIES || cacheSize > CACHE_MAX_SIZE) {
+        removeCachedResource(cache.keys().next().value);
+    }
+}
 
 /**
  * Resource loads currently in progress, shared by concurrent requests.
@@ -88,9 +148,9 @@ const pendingResources = new Map<string, Promise<CacheValue>>();
  * Cleans at regular time intervals cache resources that have not been accessed for a long time.
  */
 setInterval((): void => {
-    cache.forEach((value: CacheValue, key: string, cache: Map<string, CacheValue>) => {
+    cache.forEach((value: CacheValue, key: string) => {
         if (value.ttl <= 0) {
-            cache.delete(key);
+            removeCachedResource(key);
         } else if (value.ttl > MAX_TTL) {
             value.ttl = MAX_TTL;
         } else {
@@ -110,6 +170,21 @@ class CacheValue {
     brotliData: Buffer;
     contentType: string;
     hash: string;
+    size: number = 0;
+    filePath: string | null = null;
+    mtimeMs: number = 0;
+    lastValidated: number = 0;
+
+    /**
+     * Computes the total memory held by the resource variants.
+     *
+     * @returns {void}
+     */
+    updateSize(): void {
+        this.size = Buffer.byteLength(this.data || "")
+            + (this.gzipData ? this.gzipData.length : 0)
+            + (this.brotliData ? this.brotliData.length : 0);
+    }
 
     /**
      * Caching a local file.
@@ -121,16 +196,22 @@ class CacheValue {
      */
     async localFile(filePath: string, requestUrl: string, contentType: string): Promise<void> {
         this.contentType = contentType;
+        this.filePath = filePath;
+        const localPath = resolveLocalPath(filePath);
+        const details = await stat(localPath);
+        this.mtimeMs = details.mtimeMs;
+        this.lastValidated = Date.now();
+        const originalData = await readFileFromDisk(localPath);
 
         if (CONVERTIBLE_CONTENT_TYPE.indexOf(contentType) !== -1) {
-            this.data = readFileSync(join(configuration.distDir, filePath));
+            this.data = originalData;
             this.dataType = "bin";
             const converted = await convertResource(this.data, contentType);
             this.data = converted.data;
             this.contentType = converted.contentType;
             this.hash = sha256Hex(this.data);
         } else if (TXT_CONETENT_TYPE.indexOf(contentType) !== -1) {
-            this.data = readFileSync(join(configuration.distDir, filePath), "utf8");
+            this.data = originalData.toString("utf8");
             this.dataType = "txt";
 
             if (contentType === configuration.contentType.html && configuration.enableIsomorphic)
@@ -164,12 +245,13 @@ class CacheValue {
             this.gzipData = compressed.gzipData;
             this.brotliData = compressed.brotliData;
         } else {
-            this.data = readFileSync(join(configuration.distDir, filePath));
+            this.data = originalData;
             this.dataType = "bin";
             this.hash = sha256Hex(this.data);
         }
 
         this.ttl = 0;
+        this.updateSize();
     }
 
     /**
@@ -214,6 +296,7 @@ class CacheValue {
 
         this.hash = sha256Hex(this.data);
         this.ttl = 0;
+        this.updateSize();
     }
 }
 
@@ -336,14 +419,28 @@ function evaluateHtmlFile(content: string, requestUrl: string): Promise<string> 
 async function getResource(cacheKey: string, loader: () => Promise<CacheValue>): Promise<CacheValue> {
     const cachedValue = cache.get(cacheKey);
     if (cachedValue) {
-        cachedValue.ttl++;
-        return cachedValue;
+        if (cachedValue.filePath && Date.now() - cachedValue.lastValidated >= CACHE_VALIDATION_INTERVAL) {
+            cachedValue.lastValidated = Date.now();
+            try {
+                const details = await stat(resolveLocalPath(cachedValue.filePath));
+                if (details.mtimeMs !== cachedValue.mtimeMs) removeCachedResource(cacheKey);
+            } catch(err) {
+                if (err.code === "ENOENT") removeCachedResource(cacheKey);
+                else throw err;
+            }
+        }
+
+        if (cache.get(cacheKey) === cachedValue) {
+            cachedValue.ttl++;
+            touchCachedResource(cacheKey, cachedValue);
+            return cachedValue;
+        }
     }
 
     let pendingResource = pendingResources.get(cacheKey);
     if (!pendingResource) {
         pendingResource = loader().then(cacheValue => {
-            cache.set(cacheKey, cacheValue);
+            storeCachedResource(cacheKey, cacheValue);
             return cacheValue;
         }).finally(() => {
             pendingResources.delete(cacheKey);
@@ -365,7 +462,8 @@ async function getResource(cacheKey: string, loader: () => Promise<CacheValue>):
  * @returns {Promise<CacheValue>}
  */
 function readFile(filePath: string, requestUrl: string, contentType: string): Promise<CacheValue> {
-    return getResource(requestUrl, async () => {
+    const cacheKey = configuration.enableIsomorphic && contentType === configuration.contentType.html ? requestUrl : filePath;
+    return getResource(cacheKey, async () => {
         const cacheValue = new CacheValue();
         await cacheValue.localFile(filePath, requestUrl, contentType);
         return cacheValue;
