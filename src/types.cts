@@ -23,6 +23,8 @@ export interface Configuration {
     proxyTimeout: number;
     proxyMaxSize: number;
     scriptTimeout: number;
+    chromiumConcurrency: number;
+    chromiumMaxQueue: number;
     logDir: string;
     enableIsomorphic: boolean;
     chromiumPath: string | null;

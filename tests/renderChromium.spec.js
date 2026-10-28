@@ -87,9 +87,10 @@ describe("renderChromium", () => {
      * Stubs the configuration with a given `chromiumPath`.
      *
      * @param {string} chromiumPath
+     * @param {Object} overrides
      * @returns {Object}
      */
-    const mockConfiguration = chromiumPath => ({
+    const mockConfiguration = (chromiumPath, overrides = {}) => ({
         "./configuration.cts": {
             default: {
                 port: 8080,
@@ -107,6 +108,7 @@ describe("renderChromium", () => {
                 },
                 proxy: {},
                 use404File: false,
+                ...overrides,
             },
             "@global": true,
         }
@@ -186,5 +188,70 @@ describe("renderChromium", () => {
         });
 
         expect(await renderChromium("<html></html>", "/index.html")).toBeNull();
+    });
+
+    it("Should recover after a chromium disconnection", async () => {
+        class DisconnectableBrowser extends FakeBrowser {
+            constructor() {
+                super();
+                this.failNextPage = true;
+            }
+
+            once(event, handler) {
+                this.disconnectHandler = handler;
+            }
+
+            async newPage() {
+                if (this.failNextPage) {
+                    this.failNextPage = false;
+                    throw new Error("browser disconnected");
+                }
+                return super.newPage();
+            }
+
+            disconnect() {
+                this.disconnectHandler();
+            }
+        }
+
+        const browser = new DisconnectableBrowser();
+        let launchCount = 0;
+        const renderChromium = proxyquire("../src/renderChromium.cts", {
+            "puppeteer-core": { launch: async () => {
+                launchCount++;
+                return browser;
+            } },
+            ...mockConfiguration("/usr/bin/env")
+        });
+
+        expect(await renderChromium("<html></html>", "/index.html")).toBeNull();
+        browser.disconnect();
+        expect(await renderChromium("<html></html>", "/index.html")).toEqual(RENDERED_HTML);
+        expect(launchCount).toEqual(2);
+    });
+
+    it("Should limit concurrent chromium pages", async () => {
+        let activePages = 0;
+        let maxActivePages = 0;
+
+        class SlowPage extends FakePage {
+            async goto() {
+                activePages++;
+                maxActivePages = Math.max(maxActivePages, activePages);
+                await new Promise(resolve => setTimeout(resolve, 20));
+                activePages--;
+            }
+        }
+
+        const browser = {
+            newPage: async () => new SlowPage(),
+        };
+        const renderChromium = proxyquire("../src/renderChromium.cts", {
+            "puppeteer-core": { launch: async () => browser },
+            ...mockConfiguration("/usr/bin/env", { chromiumConcurrency: 2 })
+        });
+
+        await Promise.all(Array.from({ length: 5 }, () => renderChromium("<html></html>", "/index.html")));
+        expect(maxActivePages).toEqual(2);
     });
 });

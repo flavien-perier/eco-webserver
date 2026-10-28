@@ -60,6 +60,10 @@ module.exports.default = {
 
     scriptTimeout: Number(ecoconf.scriptTimeout) || 1000,
 
+    chromiumConcurrency: Number(process.env.ECO_CHROMIUM_CONCURRENCY || ecoconf.chromiumConcurrency) || 2,
+
+    chromiumMaxQueue: Number(ecoconf.chromiumMaxQueue ?? 100),
+
     /**
      * @type {string}
      */

@@ -1,7 +1,8 @@
 "use strict";
 
-const { existsSync, readFileSync } = require("fs");
-const { join } = require("path");
+const { existsSync } = require("fs");
+const { lstat, readFile } = require("fs/promises");
+const { resolve, sep, join } = require("path");
 const { tmpdir } = require("os");
 
 const puppeteer = require("puppeteer-core");
@@ -13,28 +14,21 @@ const Logger = require("./Logger.cts");
 const logger = new Logger();
 
 const CHROMIUM_PATH = configuration.chromiumPath;
+const CHROMIUM_CONCURRENCY = Math.max(1, Number(process.env.ECO_CHROMIUM_CONCURRENCY || configuration.chromiumConcurrency) || 2);
+const CHROMIUM_MAX_QUEUE = Math.max(0, Number(configuration.chromiumMaxQueue ?? 100));
 const CHROMIUM_ARGS = [
     "--no-sandbox",
     "--disable-setuid-sandbox",
     "--disable-dev-shm-usage",
     "--disable-gpu",
     // Chromium run as a non-root user cannot create its user data directory.
-    `--user-data-dir=${join(tmpdir(), "eco-webserver-chromium")}`
+    `--user-data-dir=${join(tmpdir(), `eco-webserver-chromium-${process.pid}`)}`
 ];
 
-/**
- * Indicates if the absence of chromium has already been logged.
- *
- * @type {boolean}
- */
 let hasLoggedMissingChromium = false;
-
-/**
- * Promise of the chromium browser shared by all renderings.
- *
- * @type {Promise<any> | null}
- */
 let browserPromise: Promise<any> | null = null;
+let activeRenders = 0;
+const renderQueue: Function[] = [];
 
 /**
  * Returns the shared chromium browser instance.
@@ -43,17 +37,72 @@ let browserPromise: Promise<any> | null = null;
  */
 async function getBrowser(): Promise<any> {
     if (!browserPromise) {
-        browserPromise = puppeteer.launch({
+        const launching = puppeteer.launch({
             executablePath: CHROMIUM_PATH,
             headless: true,
             args: CHROMIUM_ARGS
+        }).then(browser => {
+            if (typeof browser.once === "function") {
+                browser.once("disconnected", () => {
+                    if (browserPromise === launching) browserPromise = null;
+                });
+            }
+            return browser;
         }).catch(err => {
-            browserPromise = null;
+            if (browserPromise === launching) browserPromise = null;
             throw err;
         });
+        browserPromise = launching;
     }
 
     return browserPromise;
+}
+
+/**
+ * Acquires a rendering slot, waiting in a bounded queue when necessary.
+ *
+ * @returns {Promise<void>}
+ */
+async function acquireRenderSlot(): Promise<void> {
+    if (activeRenders >= CHROMIUM_CONCURRENCY) {
+        if (renderQueue.length >= CHROMIUM_MAX_QUEUE) throw new Error("Chromium rendering queue is full");
+        await new Promise(resolve => renderQueue.push(resolve));
+    }
+    activeRenders++;
+}
+
+/**
+ * Releases a rendering slot and wakes the next queued rendering.
+ *
+ * @returns {void}
+ */
+function releaseRenderSlot(): void {
+    activeRenders--;
+    const next = renderQueue.shift();
+    if (next) {
+        activeRenders++;
+        next();
+    }
+}
+
+/**
+ * Reads a local sub-resource without following paths outside distDir.
+ *
+ * @param {string} pathname
+ * @returns {Promise<Buffer | null>}
+ */
+async function readLocalResource(pathname: string): Promise<Buffer | null> {
+    const distDir = resolve(configuration.distDir);
+    const filePath = resolve(distDir, `.${decodeURIComponent(pathname)}`);
+    if (filePath !== distDir && !filePath.startsWith(distDir + sep)) return null;
+
+    try {
+        if (!(await lstat(filePath)).isFile()) return null;
+        return await readFile(filePath);
+    } catch(err) {
+        if (err.code === "ENOENT") return null;
+        throw err;
+    }
 }
 
 /**
@@ -74,18 +123,14 @@ module.exports = async function renderChromium(content: string, requestUrl: stri
         return null;
     }
 
-    let browser;
+    let page;
+    let slotAcquired = false;
 
     try {
-        browser = await getBrowser();
-    } catch(err) {
-        logger.error("Chromium is not usable, isomorphic rendering will use jsdom", err);
-        return null;
-    }
-
-    const page = await browser.newPage();
-
-    try {
+        await acquireRenderSlot();
+        slotAcquired = true;
+        const browser = await getBrowser();
+        page = await browser.newPage();
         await page.setRequestInterception(true);
 
         let isDocumentServed = false;
@@ -105,19 +150,19 @@ module.exports = async function renderChromium(content: string, requestUrl: stri
                     return;
                 }
 
-                const filePath = join(configuration.distDir, requestedUrl.pathname);
-
-                if (existsSync(filePath)) {
+                const body = await readLocalResource(requestedUrl.pathname);
+                if (body) {
                     await request.respond({
                         status: 200,
                         contentType: getContentType(requestedUrl.pathname),
-                        body: readFileSync(filePath)
+                        body
                     });
                 } else {
                     await request.respond({ status: 404, contentType: "text/plain", body: "Not found" });
                 }
             } catch(err) {
                 logger.error("Error intercepting a chromium request", err);
+                if (typeof request.abort === "function") await request.abort().catch(() => {});
             }
         });
 
@@ -128,6 +173,7 @@ module.exports = async function renderChromium(content: string, requestUrl: stri
         logger.error("Error during the chromium rendering, isomorphic rendering will use jsdom", err);
         return null;
     } finally {
-        await page.close().catch(() => {});
+        if (page) await page.close().catch(() => {});
+        if (slotAcquired) releaseRenderSlot();
     }
-}
+};

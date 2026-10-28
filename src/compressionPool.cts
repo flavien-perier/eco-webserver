@@ -105,6 +105,16 @@ class CompressionPool {
             }
         });
 
+        worker.on("exit", () => {
+            if (!this.workers.includes(worker)) return;
+            const task = worker.currentTask;
+            worker.currentTask = null;
+            this.removeWorker(worker);
+
+            if (this.workers.length < this.size) this.addWorker();
+            if (task) task.reject(new Error("Compression worker exited before completing its task"));
+        });
+
         return worker;
     }
 
