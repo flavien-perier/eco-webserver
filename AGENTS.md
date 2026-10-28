@@ -2,8 +2,8 @@
 
 ## Commands
 
-- `npm test` — full Jasmine suite (`jasmine --config=jasmine.json`, specs are `tests/**/*.spec.js`). CI (`.github/workflows/test.yml`) runs `npm install && npm test` on Node 24.
-- Run one spec file: `npm test -- tests/server.spec.js` (positional paths resolve from the repo root, not from `spec_dir`).
+- `npm test` — full Jasmine suite (`jasmine --config=jasmine.json`, specs are `tests/**/*.spec.ts`). CI (`.github/workflows/test.yml`) runs `npm install && npm test` on Node 24.
+- Run one spec file: `npm test -- tests/server.spec.ts` (positional paths resolve from the repo root, not from `spec_dir`).
 - Run the server: `node cli.cts` (bin `eco-webserver`). No build/transpile step — Node 24 strips TypeScript types from `.cts` CommonJS sources at load time (amaro).
 - No lint, formatter, or typecheck tooling exists. Match existing style: 4-space indent, `require`/`module.exports`, JSDoc types on exports, native TS types on function signatures.
 - `.cts` requires need explicit extensions (`require("./server.cts")`): extensionless resolution does not find `.cts` files, neither in sources nor in proxyquire stub keys (`"./configuration.cts"`) nor in `new Worker(<worker.cts path>)`.
@@ -31,6 +31,7 @@
 
 ## Tests
 
+- Specs use `.ts` with CommonJS `require` (`tests/package.json`). Jasmine must keep the custom `tests/loader.cts` based on `createRequire`: its default dynamic-import loader breaks `proxyquire` under Node 24.
 - Specs stub config with `proxyquire` (`"@global": true` on `./configuration.cts`) instead of env vars; keep that pattern for server-level specs. The stubbed `contentType` map must list every type a spec relies on — `contentReader` derives its text/conversion lists from it at require time.
 - Fixtures live in `tests/testDist/{simple,404,isomorphic}` (`image.png`, `test.otf`, `sitemap.xml`, `test.svg`); the `sandbox` dist dir and `/tmp/eco-test-cache` are created/removed by the suites — do not commit them.
 - `tests/testTools.compareHtml` compares whitespace-normalized HTML.

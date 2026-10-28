@@ -1,7 +1,8 @@
 {
     "spec_dir": "tests",
+    "loader": "./tests/loader.cts",
     "spec_files": [
-      "**/*.spec.js"
+      "**/*.spec.ts"
     ],
     "stopSpecOnExpectationFailure": true
 }

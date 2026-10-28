@@ -4,7 +4,7 @@ const { gunzipSync, brotliDecompressSync } = require("zlib");
 const supertest = require("supertest");
 const proxyquire = require("proxyquire").noPreserveCache();
 
-const testTools = require("./testTools");
+const testTools = require("./testTools.ts");
 
 const TEST_CACHE = "/tmp/eco-test-cache";
 
