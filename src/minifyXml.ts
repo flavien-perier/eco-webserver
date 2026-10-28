@@ -1,7 +1,7 @@
 "use strict";
 
-const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
-const { runCpuTask } = require("./cpuPool.cts");
+const { writeProcessingCache, readProcessingCache } = require("./processingCache.ts");
+const { runCpuTask } = require("./cpuPool.ts");
 
 const COMMENT_MATCHER = /<!--.*?-->/gs;
 const SPACE_BETWEEN_TAGS_MATCHER = />\s+</gs;

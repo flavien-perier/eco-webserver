@@ -1,4 +1,4 @@
-const TaskLimiter = require("../src/taskLimiter.cts");
+const TaskLimiter = require("../src/taskLimiter.ts");
 
 describe("TaskLimiter", () => {
     it("bounds concurrency and drains queued tasks", async () => {

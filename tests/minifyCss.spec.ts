@@ -4,12 +4,12 @@ const proxyquire = require("proxyquire").noPreserveCache();
 const TEST_CACHE = "./tests/test-cache";
 
 const mockConfiguration = {
-    "./configuration.cts": { default: { cacheDir: TEST_CACHE }, "@global": true }
+    "./configuration.ts": { default: { cacheDir: TEST_CACHE }, "@global": true }
 };
-const processingCache = proxyquire("../src/processingCache.cts", mockConfiguration);
-const minifyCss = proxyquire("../src/minifyCss.cts", {
+const processingCache = proxyquire("../src/processingCache.ts", mockConfiguration);
+const minifyCss = proxyquire("../src/minifyCss.ts", {
     ...mockConfiguration,
-    "./processingCache.cts": processingCache
+    "./processingCache.ts": processingCache
 });
 
 describe("minifyCss", () => {

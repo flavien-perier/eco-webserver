@@ -7,7 +7,7 @@ const OUTSIDE_FILE = "./tests/testDist/raw-resource-cache-outside.txt";
 describe("rawResourceCache", () => {
     const loadCache = (overrides = {}, fsStub = null) => {
         const stubs = {
-            "./configuration.cts": {
+            "./configuration.ts": {
                 default: {
                     distDir: SANDBOX_DIR,
                     rawCacheMaxEntries: 500,
@@ -19,7 +19,7 @@ describe("rawResourceCache", () => {
             }
         };
         if (fsStub) stubs["fs/promises"] = fsStub;
-        return proxyquire("../src/rawResourceCache.cts", stubs).readLocalResource;
+        return proxyquire("../src/rawResourceCache.ts", stubs).readLocalResource;
     };
 
     beforeEach(() => {

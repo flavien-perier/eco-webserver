@@ -1,6 +1,6 @@
 "use strict";
 
-const configuration = require("./configuration.cts").default;
+const configuration = require("./configuration.ts").default;
 
 /**
  * Builds the response header.

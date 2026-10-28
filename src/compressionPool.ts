@@ -3,9 +3,9 @@
 const { Worker } = require("worker_threads");
 const { join } = require("path");
 
-const configuration = require("./configuration.cts").default;
+const configuration = require("./configuration.ts").default;
 
-const WORKER_PATH = join(__dirname, "compressionWorker.cts");
+const WORKER_PATH = join(__dirname, "compressionWorker.ts");
 const configuredMaxQueue = Number(process.env.ECO_COMPRESSION_MAX_QUEUE ?? configuration.compressionMaxQueue ?? 100);
 const COMPRESSION_MAX_QUEUE = Number.isFinite(configuredMaxQueue) ? Math.max(0, Math.floor(configuredMaxQueue)) : 100;
 

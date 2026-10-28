@@ -4,8 +4,8 @@ const proxyquire = require("proxyquire").noPreserveCache();
 
 const SANDBOX_DIR = "./tests/testDist/jsdom";
 
-const renderJsdom = proxyquire("../src/jsdomRenderer.cts", {
-    "./configuration.cts": {
+const renderJsdom = proxyquire("../src/jsdomRenderer.ts", {
+    "./configuration.ts": {
         default: {
             port: 8080,
             distDir: SANDBOX_DIR,

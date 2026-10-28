@@ -2,8 +2,8 @@
 
 const sharp = require("sharp");
 
-const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
-const Logger = require("./Logger.cts");
+const { writeProcessingCache, readProcessingCache } = require("./processingCache.ts");
+const Logger = require("./Logger.ts");
 
 const logger = new Logger();
 

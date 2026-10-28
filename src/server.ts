@@ -5,11 +5,11 @@ const http = require("http");
 const { lstat } = require("fs/promises");
 const { resolve, sep } = require("path");
 
-const configuration = require("./configuration.cts").default;
-const buildHeader = require("./buildHeader.cts");
-const getContentType = require("./getContentType.cts");
-const { readFile, readProxy } = require("./contentReader.cts");
-const Logger = require("./Logger.cts");
+const configuration = require("./configuration.ts").default;
+const buildHeader = require("./buildHeader.ts");
+const getContentType = require("./getContentType.ts");
+const { readFile, readProxy } = require("./contentReader.ts");
+const Logger = require("./Logger.ts");
 
 const logger = new Logger();
 const PROXY_PREFIXES = Object.keys(configuration.proxy).sort((a, b) => b.length - a.length);

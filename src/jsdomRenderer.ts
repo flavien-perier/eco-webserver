@@ -3,9 +3,9 @@
 const { Worker } = require("worker_threads");
 const { join, resolve } = require("path");
 
-const configuration = require("./configuration.cts").default;
+const configuration = require("./configuration.ts").default;
 
-const WORKER_PATH = join(__dirname, "jsdomWorker.cts");
+const WORKER_PATH = join(__dirname, "jsdomWorker.ts");
 const JSDOM_CONCURRENCY = Math.max(1, Number(process.env.ECO_JSDOM_CONCURRENCY || configuration.jsdomConcurrency) || 2);
 const JSDOM_MAX_QUEUE = Math.max(0, Number(configuration.jsdomMaxQueue ?? 100));
 const JSDOM_RENDER_TIMEOUT = Math.max(1, Number(configuration.jsdomRenderTimeout) || 10000);

@@ -17,8 +17,8 @@ function loadReader(configuration = {}, overrides = {}) {
         }
     }
 
-    const { readFile } = proxyquire("../src/contentReader.cts", {
-        "./configuration.cts": {
+    const { readFile } = proxyquire("../src/contentReader.ts", {
+        "./configuration.ts": {
             default: {
                 port: 8080,
                 cacheCycle: 1800,
@@ -32,16 +32,16 @@ function loadReader(configuration = {}, overrides = {}) {
             },
             "@global": true,
         },
-        "./compressionPool.cts": { CompressionPool },
-        "./minifyHtml.cts": overrides.minifyHtml || (async data => data),
-        "./minifySvg.cts": async data => data,
-        "./renderChromium.cts": overrides.renderChromium || (async () => null),
-        "./jsdomRenderer.cts": overrides.renderJsdom || (async data => data),
-        "./processingCache.cts": overrides.processingCache || {
+        "./compressionPool.ts": { CompressionPool },
+        "./minifyHtml.ts": overrides.minifyHtml || (async data => data),
+        "./minifySvg.ts": async data => data,
+        "./renderChromium.ts": overrides.renderChromium || (async () => null),
+        "./jsdomRenderer.ts": overrides.renderJsdom || (async data => data),
+        "./processingCache.ts": overrides.processingCache || {
             readProcessingCache: async () => null,
             writeProcessingCache: async () => {},
         },
-        "./Logger.cts": class { error() {} info() {} },
+        "./Logger.ts": class { error() {} info() {} },
     });
 
     return { readFile, state };

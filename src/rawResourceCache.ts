@@ -3,7 +3,7 @@
 const { lstat, readFile } = require("fs/promises");
 const { resolve, sep } = require("path");
 
-const configuration = require("./configuration.cts").default;
+const configuration = require("./configuration.ts").default;
 
 const RAW_CACHE_MAX_ENTRIES = Math.max(1, Number(configuration.rawCacheMaxEntries) || 500);
 const RAW_CACHE_MAX_SIZE = Math.max(1, Number(configuration.rawCacheMaxSize) || 50 * 1024 * 1024);

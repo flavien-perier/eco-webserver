@@ -1,6 +1,6 @@
 "use strict";
 
-const configuration = require("./configuration.cts").default;
+const configuration = require("./configuration.ts").default;
 
 /**
  * Gives the "content-type" of a resource according to its extension.

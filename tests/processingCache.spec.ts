@@ -4,10 +4,10 @@ const proxyquire = require("proxyquire").noPreserveCache();
 const TEST_CACHE = "./tests/test-cache";
 
 const mockConfiguration = {
-    "./configuration.cts": { default: { cacheDir: TEST_CACHE }, "@global": true }
+    "./configuration.ts": { default: { cacheDir: TEST_CACHE }, "@global": true }
 };
 
-const processingCache = proxyquire("../src/processingCache.cts", mockConfiguration);
+const processingCache = proxyquire("../src/processingCache.ts", mockConfiguration);
 
 describe("processingCache", () => {
     afterEach(async () => {
@@ -48,7 +48,7 @@ describe("processingCache", () => {
             releaseWrite = resolve;
         });
         const realWriteFile = fs.promises.writeFile;
-        const slowProcessingCache = proxyquire("../src/processingCache.cts", {
+        const slowProcessingCache = proxyquire("../src/processingCache.ts", {
             ...mockConfiguration,
             "fs/promises": {
                 ...fs.promises,

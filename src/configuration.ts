@@ -3,7 +3,7 @@
 const { existsSync, copyFileSync } = require("fs");
 const { join } = require("path");
 
-import type { Configuration } from "./types.cts";
+import type { Configuration } from "./types.ts";
 
 const CONF_DIR = join(process.cwd(), "ecoconf.js");
 
@@ -132,7 +132,7 @@ module.exports.default = {
     header: ecoconf.header || {},
 
     /**
-     * @type {import("./types.cts").ContentTypeMap}
+     * @type {import("./types.ts").ContentTypeMap}
      */
     contentType: {
         ...require("./contentType.json"),

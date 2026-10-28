@@ -26,13 +26,13 @@ describe("server path resolution cache", () => {
             statusCode: 200,
             responseData: async () => ({ encoding: false, body: "ok" }),
         };
-        const server = proxyquire("../src/server.cts", {
-            "./configuration.cts": { default: configuration, "@global": true },
-            "./contentReader.cts": {
+        const server = proxyquire("../src/server.ts", {
+            "./configuration.ts": { default: configuration, "@global": true },
+            "./contentReader.ts": {
                 readFile: async () => content,
                 readProxy: async () => content,
             },
-            "./Logger.cts": class { error() {} },
+            "./Logger.ts": class { error() {} },
             "fs/promises": {
                 lstat: async filePath => {
                     lstatCount++;

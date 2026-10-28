@@ -2,11 +2,11 @@
 
 const { createHash } = require("crypto");
 const { minify } = require("html-minifier-terser");
-const minifyCss = require("./minifyCss.cts");
-const minifyJs = require("./minifyJs.cts");
-const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
-const { runCpuTask } = require("./cpuPool.cts");
-const Logger = require("./Logger.cts");
+const minifyCss = require("./minifyCss.ts");
+const minifyJs = require("./minifyJs.ts");
+const { writeProcessingCache, readProcessingCache } = require("./processingCache.ts");
+const { runCpuTask } = require("./cpuPool.ts");
+const Logger = require("./Logger.ts");
 
 const logger = new Logger();
 const contentHash = (content: string): string => createHash("sha256").update(content).digest("hex");

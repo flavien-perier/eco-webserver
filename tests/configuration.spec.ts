@@ -1,7 +1,7 @@
 const { spawnSync } = require("child_process");
 const { resolve } = require("path");
 
-const configurationPath = resolve(__dirname, "../src/configuration.cts");
+const configurationPath = resolve(__dirname, "../src/configuration.ts");
 
 function loadConfiguration(environment) {
     return spawnSync(process.execPath, ["-e", `require(${JSON.stringify(configurationPath)})`], {

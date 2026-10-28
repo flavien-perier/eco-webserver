@@ -6,10 +6,10 @@ const { tmpdir } = require("os");
 
 const puppeteer = require("puppeteer-core");
 
-const configuration = require("./configuration.cts").default;
-const getContentType = require("./getContentType.cts");
-const { readLocalResource } = require("./rawResourceCache.cts");
-const Logger = require("./Logger.cts");
+const configuration = require("./configuration.ts").default;
+const getContentType = require("./getContentType.ts");
+const { readLocalResource } = require("./rawResourceCache.ts");
+const Logger = require("./Logger.ts");
 
 const logger = new Logger();
 

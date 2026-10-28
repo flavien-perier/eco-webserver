@@ -1,5 +1,5 @@
 const http = require("http");
-const requestBuffer = require("../src/httpRequest.cts");
+const requestBuffer = require("../src/httpRequest.ts");
 
 describe("httpRequest", () => {
     let server;

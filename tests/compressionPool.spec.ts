@@ -1,7 +1,7 @@
 const { gunzipSync, brotliDecompressSync } = require("zlib");
 const proxyquire = require("proxyquire").noPreserveCache();
 
-const { CompressionPool, compressData } = require("../src/compressionPool.cts");
+const { CompressionPool, compressData } = require("../src/compressionPool.ts");
 
 describe("compressionPool", () => {
     it("Compresses data with gzip and brotli in a worker", async () => {
@@ -30,8 +30,8 @@ describe("compressionPool", () => {
     });
 
     it("Rejects new tasks when the compression queue is full", async () => {
-        const { CompressionPool: BoundedCompressionPool } = proxyquire("../src/compressionPool.cts", {
-            "./configuration.cts": { default: { compressionMaxQueue: 1 } }
+        const { CompressionPool: BoundedCompressionPool } = proxyquire("../src/compressionPool.ts", {
+            "./configuration.ts": { default: { compressionMaxQueue: 1 } }
         });
         const pool = new BoundedCompressionPool(1);
         const firstTask = pool.compress("first payload");

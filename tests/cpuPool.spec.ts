@@ -2,8 +2,8 @@ const fs = require("fs");
 const proxyquire = require("proxyquire").noPreserveCache();
 
 function loadPool(configuration) {
-    return proxyquire("../src/cpuPool.cts", {
-        "./configuration.cts": { default: configuration, "@global": true }
+    return proxyquire("../src/cpuPool.ts", {
+        "./configuration.ts": { default: configuration, "@global": true }
     }).runCpuTask;
 }
 

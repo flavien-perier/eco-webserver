@@ -1,9 +1,9 @@
 "use strict";
 
 const { minify } = require("csso");
-const { writeProcessingCache, readProcessingCache } = require("./processingCache.cts");
-const { runCpuTask } = require("./cpuPool.cts");
-const Logger = require("./Logger.cts");
+const { writeProcessingCache, readProcessingCache } = require("./processingCache.ts");
+const { runCpuTask } = require("./cpuPool.ts");
+const Logger = require("./Logger.ts");
 
 const logger = new Logger();
 

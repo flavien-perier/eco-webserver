@@ -93,7 +93,7 @@ describe("renderChromium", () => {
      * @returns {Object}
      */
     const mockConfiguration = (chromiumPath, overrides = {}) => ({
-        "./configuration.cts": {
+        "./configuration.ts": {
             default: {
                 port: 8080,
                 cacheCycle: 1800,
@@ -136,7 +136,7 @@ describe("renderChromium", () => {
                 return browser;
             }
         };
-        const renderChromium = proxyquire("../src/renderChromium.cts", {
+        const renderChromium = proxyquire("../src/renderChromium.ts", {
             "puppeteer-core": puppeteer,
             ...mockConfiguration("/usr/bin/env")
         });
@@ -171,7 +171,7 @@ describe("renderChromium", () => {
                 launchCount++;
             }
         };
-        const renderChromium = proxyquire("../src/renderChromium.cts", {
+        const renderChromium = proxyquire("../src/renderChromium.ts", {
             "puppeteer-core": puppeteer,
             ...mockConfiguration("/usr/bin/not-found-chromium")
         });
@@ -186,7 +186,7 @@ describe("renderChromium", () => {
                 throw new Error("launch error");
             }
         };
-        const renderChromium = proxyquire("../src/renderChromium.cts", {
+        const renderChromium = proxyquire("../src/renderChromium.ts", {
             "puppeteer-core": puppeteer,
             ...mockConfiguration("/usr/bin/env")
         });
@@ -196,7 +196,7 @@ describe("renderChromium", () => {
 
     it("Should configure waitUntil and bound the goto timeout by the rendering deadline", async () => {
         const browser = new FakeBrowser();
-        const renderChromium = proxyquire("../src/renderChromium.cts", {
+        const renderChromium = proxyquire("../src/renderChromium.ts", {
             "puppeteer-core": { launch: async () => browser },
             ...mockConfiguration("/usr/bin/env", {
                 chromiumRenderTimeout: 1234,
@@ -211,7 +211,7 @@ describe("renderChromium", () => {
     });
 
     it("Should stop waiting when chromium launch exceeds the rendering deadline", async () => {
-        const renderChromium = proxyquire("../src/renderChromium.cts", {
+        const renderChromium = proxyquire("../src/renderChromium.ts", {
             "puppeteer-core": { launch: () => new Promise(() => {}) },
             ...mockConfiguration("/usr/bin/env", { chromiumRenderTimeout: 20 })
         });
@@ -236,7 +236,7 @@ describe("renderChromium", () => {
                 return hangingPage;
             }
         };
-        const renderChromium = proxyquire("../src/renderChromium.cts", {
+        const renderChromium = proxyquire("../src/renderChromium.ts", {
             "puppeteer-core": { launch: async () => browser },
             ...mockConfiguration("/usr/bin/env", {
                 chromiumConcurrency: 1,
@@ -281,7 +281,7 @@ describe("renderChromium", () => {
 
         const browser = new DisconnectableBrowser();
         let launchCount = 0;
-        const renderChromium = proxyquire("../src/renderChromium.cts", {
+        const renderChromium = proxyquire("../src/renderChromium.ts", {
             "puppeteer-core": { launch: async () => {
                 launchCount++;
                 return browser;
@@ -311,7 +311,7 @@ describe("renderChromium", () => {
         const browser = {
             newPage: async () => new SlowPage(),
         };
-        const renderChromium = proxyquire("../src/renderChromium.cts", {
+        const renderChromium = proxyquire("../src/renderChromium.ts", {
             "puppeteer-core": { launch: async () => browser },
             ...mockConfiguration("/usr/bin/env", { chromiumConcurrency: 2 })
         });

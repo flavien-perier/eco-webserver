@@ -4,7 +4,7 @@ const { randomUUID } = require("crypto");
 const { mkdir, readFile, readdir, rename, stat, unlink, writeFile } = require("fs/promises");
 const { join } = require("path");
 
-const configuration = require("./configuration.cts").default;
+const configuration = require("./configuration.ts").default;
 
 const CACHE_VERSION = "v2";
 const DISK_CACHE_MAX_SIZE = Math.max(1, Number(process.env.ECO_DISK_CACHE_MAX_SIZE || configuration.diskCacheMaxSize) || 512 * 1024 * 1024);

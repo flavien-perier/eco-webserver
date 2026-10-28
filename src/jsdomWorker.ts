@@ -6,7 +6,7 @@ const { resolve, sep } = require("path");
 const { Script } = require("vm");
 
 const jsdom = require("jsdom");
-const requestBuffer = require("./httpRequest.cts");
+const requestBuffer = require("./httpRequest.ts");
 
 const QUIET_PERIOD = 100;
 const STABILITY_TIMEOUT = 2000;

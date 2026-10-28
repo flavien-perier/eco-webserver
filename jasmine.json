@@ -1,6 +1,6 @@
 {
     "spec_dir": "tests",
-    "loader": "./tests/loader.cts",
+    "loader": "./tests/loader.ts",
     "spec_files": [
       "**/*.spec.ts"
     ],

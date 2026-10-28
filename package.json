@@ -2,6 +2,7 @@
   "name": "eco-webserver",
   "version": "2.0.0",
   "description": "Static file NodeJs server",
+  "type": "commonjs",
   "keywords": [
     "static",
     "web",
@@ -16,9 +17,9 @@
   "engines": {
     "node": ">=24"
   },
-  "main": "cli.cts",
+  "main": "cli.ts",
   "bin": {
-    "eco-webserver": "./cli.cts"
+    "eco-webserver": "./cli.ts"
   },
   "scripts": {
     "test": "jasmine --config=jasmine.json"

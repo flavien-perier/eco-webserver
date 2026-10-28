@@ -2,7 +2,7 @@
 
 const { appendFile } = require("fs/promises");
 
-const configuration = require("./configuration.cts").default;
+const configuration = require("./configuration.ts").default;
 
 const MAX_BUFFERED_LOGS = 10000;
 

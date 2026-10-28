@@ -3,7 +3,7 @@
 const { Worker } = require("worker_threads");
 const { join } = require("path");
 
-const configuration = require("./configuration.cts").default;
+const configuration = require("./configuration.ts").default;
 
 const CPU_WORKER_THRESHOLD = nonNegativeInteger(
     process.env.ECO_CPU_WORKER_THRESHOLD ?? configuration.cpuWorkerThreshold,
@@ -107,7 +107,7 @@ function dispatch(): void {
  */
 function createWorker(): { worker: any; current: any; failed: boolean } {
     const slot = {
-        worker: new Worker(join(__dirname, "cpuWorker.cts")),
+        worker: new Worker(join(__dirname, "cpuWorker.ts")),
         current: null,
         failed: false
     };
