@@ -2,10 +2,6 @@
 
 /**
  * Returns the quality associated with an encoding in Accept-Encoding.
- *
- * @param {string} header
- * @param {string} encoding
- * @returns {number}
  */
 function encodingQuality(header: string, encoding: string): number {
     let quality: number | null = null;
@@ -30,9 +26,6 @@ function encodingQuality(header: string, encoding: string): number {
 /**
  * Chooses an encoding from client preferences without requiring the variant to
  * have been generated already.
- *
- * @param {string} header
- * @returns {"br" | "gzip" | false}
  */
 function preferredEncoding(header: string): "br" | "gzip" | false {
     const brotliQuality = encodingQuality(header, "br");

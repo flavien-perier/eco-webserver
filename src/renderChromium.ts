@@ -34,8 +34,6 @@ const renderQueue: any[] = [];
 
 /**
  * Returns the shared chromium browser instance.
- *
- * @returns {Promise<any>}
  */
 async function getBrowser(): Promise<any> {
     if (!browserPromise) {
@@ -63,9 +61,6 @@ async function getBrowser(): Promise<any> {
 /**
  * Acquires a rendering slot, waiting in a bounded queue until the deadline.
  * Timed out entries are removed so they cannot consume a slot later.
- *
- * @param {number} deadline
- * @returns {Promise<void>}
  */
 async function acquireRenderSlot(deadline: number): Promise<void> {
     const remaining = deadline - Date.now();
@@ -94,8 +89,6 @@ async function acquireRenderSlot(deadline: number): Promise<void> {
 
 /**
  * Releases a rendering slot and wakes the next queued rendering.
- *
- * @returns {void}
  */
 function releaseRenderSlot(): void {
     activeRenders--;
@@ -109,10 +102,6 @@ function releaseRenderSlot(): void {
 /**
  * Runs an operation without waiting beyond the absolute rendering deadline.
  * The operation itself may not be cancellable, but its result is ignored on timeout.
- *
- * @param {Function} operation
- * @param {number} deadline
- * @returns {Promise<any>}
  */
 async function runBeforeDeadline(operation: Function, deadline: number): Promise<any> {
     const remaining = deadline - Date.now();
@@ -133,10 +122,6 @@ async function runBeforeDeadline(operation: Function, deadline: number): Promise
 /**
  * Renders a html page with chromium before sending it to the client.
  * Returns `null` if chromium is not usable, in this case the caller must fallback on jsdom.
- *
- * @param {string} content
- * @param {string} requestUrl
- * @returns {Promise<string | null>}
  */
 module.exports = async function renderChromium(content: string, requestUrl: string): Promise<string | null> {
     if (!CHROMIUM_PATH || !existsSync(CHROMIUM_PATH)) {

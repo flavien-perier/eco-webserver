@@ -10,10 +10,6 @@ const logger = new Logger();
 
 /**
  * Reforms a JavaScript code.
- *
- * @param {string} inputJs
- * @param {string} hash
- * @returns {Promise<string>}
  */
 module.exports = async function minifyJs(inputJs: string, hash: string): Promise<string> {
     const cacheJs = await readProcessingCache(hash, "js");

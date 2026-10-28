@@ -4,9 +4,6 @@ const configuration = require("./configuration.ts").default;
 
 /**
  * Gives the "content-type" of a resource according to its extension.
- *
- * @param {string} filePath
- * @returns {string}
  */
 module.exports = function getContentType(filePath: string): string {
     const parsing = /\.([a-zA-Z0-9]+)$/.exec(filePath);

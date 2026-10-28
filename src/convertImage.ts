@@ -9,10 +9,6 @@ const logger = new Logger();
 
 /**
  * Converts an image into the webp format.
- *
- * @param {Buffer} inputImage
- * @param {string} hash
- * @returns {Promise<Buffer | null>}
  */
 module.exports = async function convertImage(inputImage: Buffer, hash: string): Promise<Buffer | null> {
     const cacheImage = await readProcessingCache(hash, "webp");

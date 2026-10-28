@@ -5,11 +5,6 @@ const https = require("https");
 
 /**
  * Downloads a remote resource with explicit limits and error handling.
- *
- * @param {URL} url
- * @param {number} timeout
- * @param {number} maxSize
- * @returns {Promise<{buffer: Buffer, statusCode: number, headers: Object}>}
  */
 module.exports = function requestBuffer(url: URL, timeout: number, maxSize: number): Promise<{ buffer: Buffer; statusCode: number; headers: any }> {
     return new Promise((resolve, reject) => {

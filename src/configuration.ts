@@ -26,13 +26,6 @@ const DEFAULT_CHROMIUM_PATH = CHROMIUM_CANDIDATES.find(path => existsSync(path))
 /**
  * Validates a finite numeric setting at startup instead of silently disabling
  * resource limits or creating pathological timers.
- *
- * @param {string} name
- * @param {any} value
- * @param {number} fallback
- * @param {number} minimum
- * @param {boolean} integer
- * @returns {number}
  */
 function numberSetting(name: string, value: any, fallback: number, minimum: number = 0, integer: boolean = true): number {
     const selected = value ?? fallback;
@@ -45,10 +38,6 @@ function numberSetting(name: string, value: any, fallback: number, minimum: numb
 
 /**
  * Reads a boolean environment variable with explicit accepted values.
- *
- * @param {string | undefined} value
- * @param {boolean} fallback
- * @returns {boolean}
  */
 function booleanSetting(value: string | undefined, fallback: boolean): boolean {
     if (value === undefined) return fallback;
@@ -58,21 +47,12 @@ function booleanSetting(value: string | undefined, fallback: boolean): boolean {
 }
 
 module.exports.default = {
-    /**
-     * @type {string | number}
-     */
     port: process.env.ECO_PORT || ecoconf.port || 8080,
 
     cacheCycle: numberSetting("cacheCycle", process.env.ECO_CACHE_CYCLE ?? ecoconf.cacheCycle, 1800, 0.001, false),
 
-    /**
-     * @type {string}
-     */
     distDir: DIST_DIR,
 
-    /**
-     * @type {string}
-     */
     cacheDir: process.env.ECO_CACHE_DIR || ecoconf.cacheDir || "/tmp/eco-webserver",
 
     cacheMaxEntries: numberSetting("cacheMaxEntries", process.env.ECO_CACHE_MAX_ENTRIES ?? ecoconf.cacheMaxEntries, 1000, 1),
@@ -110,42 +90,21 @@ module.exports.default = {
     rawCacheMaxSize: numberSetting("rawCacheMaxSize", ecoconf.rawCacheMaxSize, 50 * 1024 * 1024, 1),
     ssrCacheTtl: numberSetting("ssrCacheTtl", ecoconf.ssrCacheTtl, 0, 0),
 
-    /**
-     * @type {string}
-     */
     logDir: process.env.ECO_LOG_DIR || ecoconf.logDir || "/var/log/server.log",
     accessLog: booleanSetting(process.env.ECO_ACCESS_LOG, ecoconf.accessLog !== false),
 
-    /**
-     * @type {boolean}
-     */
     enableIsomorphic: !!ecoconf.enableIsomorphic,
 
-    /**
-     * @type {string | null}
-     */
     chromiumPath: process.env.ECO_CHROMIUM_PATH || ecoconf.chromiumPath || DEFAULT_CHROMIUM_PATH,
 
-    /**
-     * @type {{[name: string]: string}}
-     */
     header: ecoconf.header || {},
 
-    /**
-     * @type {import("./types.ts").ContentTypeMap}
-     */
     contentType: {
         ...require("./contentType.json"),
         ...(ecoconf.contentType || {})
     },
 
-    /**
-     * @type {{[urlPrefix: string]: string}}
-     */
     proxy: ecoconf.proxy || {},
 
-    /**
-     * @type {boolean}
-     */
     use404File: existsSync(join(DIST_DIR, "404.html"))
 } as Configuration;

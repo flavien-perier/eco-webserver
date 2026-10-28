@@ -23,9 +23,6 @@ const activeWrites = new Set<Promise<void>>();
 
 /**
  * Removes the least recently modified processing artefacts above the size limit.
- *
- * @param {number} maxSize
- * @returns {Promise<void>}
  */
 async function cleanProcessingCache(maxSize: number = DISK_CACHE_MAX_SIZE): Promise<void> {
     let files;
@@ -89,9 +86,6 @@ function scheduleCleanup(): void {
 
 /**
  * Atomically writes one queued cache entry.
- *
- * @param {{afterProcessing: string | Buffer, cacheLocation: string, temporaryLocation: string}} task
- * @returns {Promise<void>}
  */
 async function writeCacheEntry(task): Promise<void> {
     await mkdir(configuration.cacheDir, { recursive: true });
@@ -125,11 +119,6 @@ function pumpWriteQueue(): void {
 /**
  * Pushes a treatment into the cache without waiting for disk I/O.
  * Duplicate and overflowing writes are discarded on a best-effort basis.
- *
- * @param {string | Buffer} afterProcessing
- * @param {string} hash
- * @param {string} fileFormat
- * @returns {Promise<void>}
  */
 async function writeProcessingCache(afterProcessing: string | Buffer, hash: string, fileFormat: string): Promise<void> {
     const key = `${hash}.${fileFormat}`;
@@ -150,8 +139,6 @@ async function writeProcessingCache(afterProcessing: string | Buffer, hash: stri
 
 /**
  * Waits for all cache writes and cleanups currently in progress.
- *
- * @returns {Promise<void>}
  */
 async function flushProcessingCache(): Promise<void> {
     while (writeQueue.length > 0 || activeWrites.size > 0 || cleanupPromise) {
@@ -163,10 +150,6 @@ async function flushProcessingCache(): Promise<void> {
 
 /**
  * Recovers a cache treatment.
- *
- * @param {string} hash
- * @param {string} fileFormat
- * @returns {Promise<Buffer | null>}
  */
 async function readProcessingCache(hash: string, fileFormat: string): Promise<Buffer | null> {
     try {
@@ -179,10 +162,6 @@ async function readProcessingCache(hash: string, fileFormat: string): Promise<Bu
 
 /**
  * Gives the location of the cached file.
- *
- * @param {string} hash
- * @param {string} fileFormat
- * @returns {string}
  */
 function fileCacheDir(hash: string, fileFormat: string): string {
     return join(configuration.cacheDir, `${CACHE_VERSION}-${hash}.${fileFormat}`);

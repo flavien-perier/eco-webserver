@@ -87,12 +87,8 @@ class FakeBrowser {
 describe("renderChromium", () => {
     /**
      * Stubs the configuration with a given `chromiumPath`.
-     *
-     * @param {string} chromiumPath
-     * @param {Object} overrides
-     * @returns {Object}
      */
-    const mockConfiguration = (chromiumPath, overrides = {}) => ({
+    const mockConfiguration = (chromiumPath: string, overrides: Record<string, any> = {}) => ({
         "./configuration.ts": {
             default: {
                 port: 8080,

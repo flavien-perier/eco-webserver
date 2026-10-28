@@ -14,10 +14,6 @@ const MULTIPLE_SPACE_MATCHER = / {2,}/g;
 
 /**
  * Executes a CPU-heavy operation without loading the application configuration.
- *
- * @param {string} operation
- * @param {string | Buffer} input
- * @returns {Promise<string | Buffer>}
  */
 async function execute(operation: string, input: string | Buffer): Promise<string | Buffer> {
     switch(operation) {

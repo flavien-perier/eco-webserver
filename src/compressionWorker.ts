@@ -6,9 +6,6 @@ const { gzipSync, brotliCompressSync, constants } = require("zlib");
 
 /**
  * Returns an exact ArrayBuffer that can be transferred without cloning.
- *
- * @param {Buffer} data
- * @returns {ArrayBuffer}
  */
 function toTransferableBuffer(data: Buffer): ArrayBuffer {
     if (data.byteOffset === 0 && data.byteLength === data.buffer.byteLength) return data.buffer;

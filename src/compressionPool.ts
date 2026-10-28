@@ -9,12 +9,16 @@ const WORKER_PATH = join(__dirname, "compressionWorker.ts");
 const configuredMaxQueue = Number(process.env.ECO_COMPRESSION_MAX_QUEUE ?? configuration.compressionMaxQueue ?? 100);
 const COMPRESSION_MAX_QUEUE = Number.isFinite(configuredMaxQueue) ? Math.max(0, Math.floor(configuredMaxQueue)) : 100;
 
+type CompressionTask = {
+    data: string | Buffer;
+    encoding?: "gzip" | "br";
+    resolve: Function;
+    reject: Function;
+};
+
 /**
  * Compresses a text resource with the `gzip` and `brotli` algorithms.
  * Executed inside a worker.
- *
- * @param {string | Buffer} data
- * @returns {{gzipData: Buffer, brotliData: Buffer}}
  */
 function compressData(data: string | Buffer): { gzipData: Buffer; brotliData: Buffer } {
     const { gzipSync, brotliCompressSync, constants } = require("zlib");
@@ -34,47 +38,23 @@ function compressData(data: string | Buffer): { gzipData: Buffer; brotliData: Bu
  * during the `gzip` and `brotli` compression of the text resources.
  */
 class CompressionPool {
-    /**
-     * @param {number} size Number of workers of the pool.
-     */
+    size: number;
+    workers: Worker[] = [];
+    idleWorkers: Worker[] = [];
+    queue: CompressionTask[] = [];
+
     constructor(size: number) {
-        /**
-         * @type {number}
-         */
         this.size = size;
-
-        /**
-         * @type {Worker[]}
-         */
-        this.workers = [];
-
-        /**
-         * Idle workers usable for a new task.
-         *
-         * @type {Worker[]}
-         */
-        this.idleWorkers = [];
-
-        /**
-         * Tasks waiting for a free worker.
-         *
-         * @type {{data: string | Buffer, encoding?: "gzip" | "br", resolve: Function, reject: Function}[]}
-         */
-        this.queue = [];
     }
 
     /**
      * Creates a worker of the pool and listens to its responses.
-     *
-     * @returns {Worker}
      */
     createWorker(): Worker {
         const worker = new Worker(WORKER_PATH);
 
         /**
          * Task currently executed by the worker.
-         *
-         * @type {{encoding?: "gzip" | "br", resolve: Function, reject: Function} | null}
          */
         worker.currentTask = null;
 
@@ -130,8 +110,6 @@ class CompressionPool {
 
     /**
      * Adds a new worker to the pool.
-     *
-     * @returns {void}
      */
     addWorker(): void {
         const worker = this.createWorker();
@@ -142,9 +120,6 @@ class CompressionPool {
 
     /**
      * Removes a worker of the pool.
-     *
-     * @param {Worker} worker
-     * @returns {void}
      */
     removeWorker(worker: Worker): void {
         this.workers = this.workers.filter(w => w !== worker);
@@ -153,8 +128,6 @@ class CompressionPool {
 
     /**
      * Sends queued tasks to the idle workers.
-     *
-     * @returns {void}
      */
     drainQueue(): void {
         while (this.queue.length > 0 && this.idleWorkers.length > 0) {
@@ -166,12 +139,8 @@ class CompressionPool {
 
     /**
      * Sends a task to a worker.
-     *
-     * @param {Worker} worker
-     * @param {{data: string | Buffer, encoding?: "gzip" | "br", resolve: Function, reject: Function}} task
-     * @returns {void}
      */
-    runTask(worker: Worker, task: { data: string | Buffer; encoding?: "gzip" | "br"; resolve: Function; reject: Function }): void {
+    runTask(worker: Worker, task: CompressionTask): void {
         worker.currentTask = { encoding: task.encoding, resolve: task.resolve, reject: task.reject };
 
         worker.postMessage({ data: task.data, encoding: task.encoding });
@@ -180,10 +149,6 @@ class CompressionPool {
     /**
      * Compresses a text resource with `gzip` and `brotli`, or with only the
      * requested algorithm, inside a worker.
-     *
-     * @param {string | Buffer} data
-     * @param {"gzip" | "br"} [encoding]
-     * @returns {Promise<{gzipData: Buffer, brotliData: Buffer} | Buffer>}
      */
     compress(data: string | Buffer, encoding?: "gzip" | "br"): Promise<{ gzipData: Buffer; brotliData: Buffer } | Buffer> {
         return new Promise((resolve: Function, reject: Function) => {

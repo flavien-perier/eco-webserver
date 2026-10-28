@@ -13,10 +13,6 @@ class TaskLimiter {
         reject: Function;
     }> = [];
 
-    /**
-     * @param {number} concurrency
-     * @param {number} maxQueue
-     */
     constructor(concurrency: number, maxQueue: number) {
         this.concurrency = concurrency;
         this.maxQueue = maxQueue;
@@ -24,9 +20,6 @@ class TaskLimiter {
 
     /**
      * Runs a task now or queues it within the configured bound.
-     *
-     * @param {() => Promise<any>} task
-     * @returns {Promise<any>}
      */
     run(task: () => Promise<any>): Promise<any> {
         if (this.active >= this.concurrency && this.queue.length >= this.maxQueue) {
@@ -43,8 +36,6 @@ class TaskLimiter {
 
     /**
      * Starts queued tasks while slots are available.
-     *
-     * @returns {void}
      */
     drain(): void {
         while (this.active < this.concurrency && this.queue.length > 0) {

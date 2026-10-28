@@ -10,10 +10,6 @@ const MULTIPLE_SPACE_MATCHER = / {2,}/g;
 
 /**
  * Reforms a XML file.
- *
- * @param {string} inputXml
- * @param {string} hash
- * @returns {Promise<string>}
  */
 module.exports = async function minifyXml(inputXml: string, hash: string): Promise<string> {
     const cacheXml = await readProcessingCache(hash, "xml");

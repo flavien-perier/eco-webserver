@@ -13,10 +13,6 @@ const contentHash = (content: string): string => createHash("sha256").update(con
 
 /**
  * Reforms a HTML page with an HTML parser.
- *
- * @param {string} inputHtml
- * @param {string} hash
- * @returns {Promise<string>}
  */
 module.exports = async function minifyHtml(inputHtml: string, hash: string): Promise<string> {
     const cacheHtml = await readProcessingCache(hash, "html");

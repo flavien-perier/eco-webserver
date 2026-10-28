@@ -10,10 +10,6 @@ const logger = new Logger();
 
 /**
  * Reforms a SVG file.
- *
- * @param {string} inputSvg
- * @param {string} hash
- * @returns {Promise<string>}
  */
 module.exports = async function minifySvg(inputSvg: string, hash: string): Promise<string> {
     const cacheSvg = await readProcessingCache(hash, "svg");

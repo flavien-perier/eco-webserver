@@ -10,13 +10,12 @@ const TEST_CACHE = "/tmp/eco-test-cache";
 
 /**
  * Sends a request to the server and recovers the raw response.
- *
- * @param {http.Server} server
- * @param {string} path
- * @param {{[string]: string}} headers
- * @returns {Promise<{statusCode: number, headers: {[string]: string}, body: Buffer}>}
  */
-const requestRaw = (server, path, headers) => new Promise((resolve, reject) => {
+const requestRaw = (server: import("http").Server, path: string, headers?: Record<string, string>): Promise<{
+    statusCode: number;
+    headers: Record<string, string | string[] | undefined>;
+    body: Buffer;
+}> => new Promise((resolve, reject) => {
     const req = http.request({ port: server.address().port, path: path, headers: headers || {} }, res => {
         let body = Buffer.alloc(0);
         res.on("data", data => {

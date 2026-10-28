@@ -70,17 +70,11 @@ const PROXY_PREFIXES = Object.keys(configuration.proxy).sort((a, b) => b.length 
 
 /**
  * Calculates the sha256 sum of a resource.
- *
- * @param {string | Buffer} data
- * @returns {string}
  */
 const sha256Hex = (data: string | Buffer): string => createHash("sha256").update(data || "").digest("hex");
 
 /**
  * Resolves a local resource without allowing it to escape distDir.
- *
- * @param {string} filePath
- * @returns {string}
  */
 function resolveLocalPath(filePath: string): string {
     const distDir = resolve(configuration.distDir);
@@ -91,9 +85,6 @@ function resolveLocalPath(filePath: string): string {
 
 /**
  * Builds an upstream URL while preserving the configured origin.
- *
- * @param {string} requestUrl
- * @returns {URL}
  */
 function buildProxyUrl(requestUrl: string): URL {
     const request = new URL(requestUrl, "http://localhost");
@@ -110,17 +101,12 @@ function buildProxyUrl(requestUrl: string): URL {
 
 /**
  * Associates a URL with its content in the cache.
- *
- * @type {Map<string, CacheValue>}
  */
 const cache = new Map<string, CacheValue>();
 let cacheSize = 0;
 
 /**
  * Removes a resource and updates the tracked cache size.
- *
- * @param {string} key
- * @returns {void}
  */
 function removeCachedResource(key: string): void {
     const value = cache.get(key);
@@ -131,10 +117,6 @@ function removeCachedResource(key: string): void {
 
 /**
  * Marks a cached resource as recently used.
- *
- * @param {string} key
- * @param {CacheValue} value
- * @returns {void}
  */
 function touchCachedResource(key: string, value: CacheValue): void {
     cache.delete(key);
@@ -143,8 +125,6 @@ function touchCachedResource(key: string, value: CacheValue): void {
 
 /**
  * Evicts least recently used entries until both cache limits are satisfied.
- *
- * @returns {void}
  */
 function enforceCacheLimits(): void {
     while (cache.size > CACHE_MAX_ENTRIES || cacheSize > CACHE_MAX_SIZE) {
@@ -154,10 +134,6 @@ function enforceCacheLimits(): void {
 
 /**
  * Stores a resource and evicts the least recently used entries above the limits.
- *
- * @param {string} key
- * @param {CacheValue} value
- * @returns {void}
  */
 function storeCachedResource(key: string, value: CacheValue): void {
     if (value.size > CACHE_MAX_SIZE) return;
@@ -169,10 +145,6 @@ function storeCachedResource(key: string, value: CacheValue): void {
 
 /**
  * Reconciles the LRU size after a lazy compressed variant has been added.
- *
- * @param {CacheValue} value
- * @param {number} previousSize
- * @returns {void}
  */
 function refreshCachedResourceSize(value: CacheValue, previousSize: number): void {
     if (!value.cacheKey || cache.get(value.cacheKey) !== value) return;
@@ -182,8 +154,6 @@ function refreshCachedResourceSize(value: CacheValue, previousSize: number): voi
 
 /**
  * Resource loads currently in progress, shared by concurrent requests.
- *
- * @type {Map<string, Promise<CacheValue>>}
  */
 const pendingResources = new Map<string, Promise<CacheValue>>();
 
@@ -223,17 +193,12 @@ class CacheValue {
     lastValidated: number = 0;
     statusCode: number = 200;
 
-    /**
-     * @param {string | null} cacheKey
-     */
     constructor(cacheKey: string | null = null) {
         this.cacheKey = cacheKey;
     }
 
     /**
      * Computes the total memory held by the resource variants.
-     *
-     * @returns {void}
      */
     updateSize(): void {
         this.dataLength = Buffer.byteLength(this.data || "");
@@ -244,9 +209,6 @@ class CacheValue {
 
     /**
      * Generates one compressed variant once and shares concurrent computations.
-     *
-     * @param {"gzip" | "br"} encoding
-     * @returns {Promise<Buffer>}
      */
     ensureCompression(encoding: "gzip" | "br"): Promise<Buffer> {
         const dataProperty = encoding === "br" ? "brotliData" : "gzipData";
@@ -273,9 +235,6 @@ class CacheValue {
     /**
      * Generates only variants useful to the current client. Direct callers that
      * omit Accept-Encoding retain the historical eager gzip+Brotli behavior.
-     *
-     * @param {string} [acceptEncoding]
-     * @returns {Promise<void>}
      */
     async prepareRequestedCompressions(acceptEncoding?: string): Promise<void> {
         if (this.dataType !== "txt") return;
@@ -296,9 +255,6 @@ class CacheValue {
 
     /**
      * Selects and, when necessary, lazily creates the response body.
-     *
-     * @param {string} acceptEncoding
-     * @returns {Promise<{encoding: "br" | "gzip" | false, body: string | Buffer}>}
      */
     async responseData(acceptEncoding: string): Promise<{ encoding: "br" | "gzip" | false; body: string | Buffer }> {
         const encoding = this.dataType === "txt" ? preferredEncoding(acceptEncoding) : false;
@@ -309,12 +265,6 @@ class CacheValue {
 
     /**
      * Caching a local file.
-     *
-     * @param {string} filePath
-     * @param {string} requestUrl
-     * @param {string} contentType
-     * @param {string} [acceptEncoding]
-     * @returns {Promise<void>}
      */
     async localFile(filePath: string, requestUrl: string, contentType: string, acceptEncoding?: string): Promise<void> {
         this.contentType = contentType;
@@ -377,10 +327,6 @@ class CacheValue {
 
     /**
      * Caching a remote file.
-     *
-     * @param {string} requestUrl
-     * @param {string} [acceptEncoding]
-     * @returns {Promise<void>}
      */
     async proxyFile(requestUrl: string, acceptEncoding?: string): Promise<void> {
         const response = await requestBuffer(buildProxyUrl(requestUrl), PROXY_TIMEOUT, PROXY_MAX_SIZE);
@@ -409,10 +355,6 @@ class CacheValue {
 
 /**
  * Converts a binary resource if its type allows it.
- *
- * @param {Buffer} data
- * @param {string} contentType
- * @returns {Promise<{data: Buffer, contentType: string}>}
  */
 async function convertResource(data: Buffer, contentType: string): Promise<{ data: Buffer; contentType: string }> {
     if (WEBP_CONVERSION_CONTENT_TYPE.indexOf(contentType) !== -1) {
@@ -434,11 +376,6 @@ async function convertResource(data: Buffer, contentType: string): Promise<{ dat
 
 /**
  * Renders HTML, optionally reusing a persistent SSR result for static sites.
- *
- * @param {string} content
- * @param {string} requestUrl
- * @param {string} sourceHash
- * @returns {Promise<string>}
  */
 async function renderHtml(content: string, requestUrl: string, sourceHash: string): Promise<string> {
     const cacheKey = sha256Hex(`ssr-v1\0${requestUrl}\0${sourceHash}`);
@@ -466,10 +403,6 @@ async function renderHtml(content: string, requestUrl: string, sourceHash: strin
 
 /**
  * Gets a cached resource or shares its in-progress loading.
- *
- * @param {string} cacheKey
- * @param {() => Promise<CacheValue>} loader
- * @returns {Promise<CacheValue>}
  */
 async function getResource(cacheKey: string, loader: () => Promise<CacheValue>): Promise<CacheValue> {
     const cachedValue = cache.get(cacheKey);
@@ -510,12 +443,6 @@ async function getResource(cacheKey: string, loader: () => Promise<CacheValue>):
 
 /**
  * Reads the contents of a resource from the `dist` folder.
- *
- * @param {string} filePath
- * @param {string} requestUrl
- * @param {string} contentType
- * @param {string} [acceptEncoding]
- * @returns {Promise<CacheValue>}
  */
 function readFile(filePath: string, requestUrl: string, contentType: string, acceptEncoding?: string): Promise<CacheValue> {
     const cacheKey = configuration.enableIsomorphic && contentType === configuration.contentType.html ? requestUrl : filePath;
@@ -528,10 +455,6 @@ function readFile(filePath: string, requestUrl: string, contentType: string, acc
 
 /**
  * Retrieves the content of a remote resource.
- *
- * @param {string} requestUrl
- * @param {string} [acceptEncoding]
- * @returns {Promise<CacheValue>}
  */
 function readProxy(requestUrl: string, acceptEncoding?: string): Promise<CacheValue> {
     return getResource(requestUrl, async () => {

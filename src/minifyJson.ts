@@ -8,10 +8,6 @@ const logger = new Logger();
 
 /**
  * Reforms a json file.
- *
- * @param {string} inputJson
- * @param {string} hash
- * @returns {Promise<string>}
  */
 module.exports = async function minifyJson(inputJson: string, hash: string): Promise<string> {
     const cacheJson = await readProcessingCache(hash, "json");

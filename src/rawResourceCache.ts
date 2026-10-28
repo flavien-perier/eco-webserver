@@ -20,24 +20,17 @@ type CachedResource = {
 
 /**
  * Raw resources indexed by their absolute path, in least recently used order.
- *
- * @type {Map<string, CachedResource>}
  */
 const cache = new Map<string, CachedResource>();
 let cacheSize = 0;
 
 /**
  * Resource reads and revalidations currently in progress.
- *
- * @type {Map<string, Promise<Buffer | null>>}
  */
 const pendingResources = new Map<string, Promise<Buffer | null>>();
 
 /**
  * Removes a cached resource and updates the tracked cache size.
- *
- * @param {string} filePath
- * @returns {void}
  */
 function removeCachedResource(filePath: string): void {
     const cachedResource = cache.get(filePath);
@@ -48,10 +41,6 @@ function removeCachedResource(filePath: string): void {
 
 /**
  * Marks a cached resource as recently used.
- *
- * @param {string} filePath
- * @param {CachedResource} cachedResource
- * @returns {void}
  */
 function touchCachedResource(filePath: string, cachedResource: CachedResource): void {
     cache.delete(filePath);
@@ -60,11 +49,6 @@ function touchCachedResource(filePath: string, cachedResource: CachedResource): 
 
 /**
  * Stores a raw resource and evicts least recently used entries above the limits.
- *
- * @param {string} filePath
- * @param {Buffer} data
- * @param {number} mtimeMs
- * @returns {void}
  */
 function storeCachedResource(filePath: string, data: Buffer, mtimeMs: number): void {
     if (data.length > RAW_CACHE_MAX_SIZE) return;
@@ -79,10 +63,6 @@ function storeCachedResource(filePath: string, data: Buffer, mtimeMs: number): v
 
 /**
  * Loads or revalidates a resource, sharing the operation between concurrent callers.
- *
- * @param {string} filePath
- * @param {CachedResource | undefined} cachedResource
- * @returns {Promise<Buffer | null>}
  */
 function getPendingResource(filePath: string, cachedResource?: CachedResource): Promise<Buffer | null> {
     const currentPending = pendingResources.get(filePath);
@@ -126,9 +106,6 @@ function getPendingResource(filePath: string, cachedResource?: CachedResource): 
 
 /**
  * Reads a local sub-resource without following paths outside distDir or symlinks.
- *
- * @param {string} pathname
- * @returns {Promise<Buffer | null>}
  */
 async function readLocalResource(pathname: string): Promise<Buffer | null> {
     let filePath: string;

@@ -19,9 +19,6 @@ const pathCache = new Map<string, { isFile: boolean; lastValidated: number }>();
 
 /**
  * Converts a request URL into a canonical path confined to distDir.
- *
- * @param {string} requestUrl
- * @returns {{requestPath: string, filePath: string}}
  */
 function resolveRequestPath(requestUrl: string): { requestPath: string; filePath: string } {
     const parsedUrl = new URL(requestUrl || "/", "http://localhost");
@@ -39,9 +36,6 @@ function resolveRequestPath(requestUrl: string): { requestPath: string; filePath
 /**
  * Checks whether a path is a regular file without following symbolic links.
  * Positive and negative resolutions share the content revalidation interval.
- *
- * @param {string} filePath
- * @returns {Promise<boolean>}
  */
 async function isFile(filePath: string): Promise<boolean> {
     const cached = pathCache.get(filePath);
@@ -68,8 +62,6 @@ async function isFile(filePath: string): Promise<boolean> {
 
 /**
  * Eco-webserver
- *
- * @returns {http.Server}
  */
 module.exports = (): http.Server => {
     return http.createServer(async (req, res) => {

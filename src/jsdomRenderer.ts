@@ -20,28 +20,14 @@ const workerConfiguration = Object.freeze({
     scriptLoadConcurrency: SCRIPT_LOAD_CONCURRENCY,
 });
 
-/**
- * @type {Worker[]}
- */
-const workers = [];
+const workers: Worker[] = [];
 
-/**
- * @type {Worker[]}
- */
-const idleWorkers = [];
+const idleWorkers: Worker[] = [];
 
-/**
- * @type {Array<{content: string, requestUrl: string, resolve: Function, reject: Function, timer: NodeJS.Timeout, worker: Worker | null, settled: boolean}>}
- */
-const renderQueue = [];
+const renderQueue: any[] = [];
 
 /**
  * Settles a rendering task and clears its global deadline.
- *
- * @param {Object} task
- * @param {Error | null} err
- * @param {string | null} html
- * @returns {void}
  */
 function settleTask(task: any, err: Error | null, html: string | null = null): void {
     if (task.settled) return;
@@ -54,10 +40,6 @@ function settleTask(task: any, err: Error | null, html: string | null = null): v
 
 /**
  * Removes and terminates a failed worker, then creates its replacement.
- *
- * @param {Worker} worker
- * @param {Error} err
- * @returns {void}
  */
 function failWorker(worker: Worker, err: Error): void {
     if (!workers.includes(worker)) return;
@@ -82,8 +64,6 @@ function failWorker(worker: Worker, err: Error): void {
 
 /**
  * Creates a worker processing one rendering at a time.
- *
- * @returns {Worker}
  */
 function createWorker(): Worker {
     const worker = new Worker(WORKER_PATH);
@@ -118,8 +98,6 @@ function createWorker(): Worker {
 
 /**
  * Assigns queued renderings to idle workers, creating workers lazily.
- *
- * @returns {void}
  */
 function drainQueue(): void {
     while (renderQueue.length > 0) {
@@ -148,10 +126,6 @@ function drainQueue(): void {
 
 /**
  * Renders HTML with jsdom in an isolated worker.
- *
- * @param {string} content
- * @param {string} requestUrl
- * @returns {Promise<string>}
  */
 module.exports = async function renderJsdom(content: string, requestUrl: string): Promise<string> {
     return new Promise((resolveTask: Function, rejectTask: Function) => {

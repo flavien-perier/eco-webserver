@@ -9,10 +9,6 @@ const logger = new Logger();
 
 /**
  * Reforms a CSS style page with a CSS parser.
- *
- * @param {string} inputCss
- * @param {string} hash
- * @returns {Promise<string>}
  */
 module.exports = async function minifyCss(inputCss: string, hash: string): Promise<string> {
     const cacheCss = await readProcessingCache(hash, "css");

@@ -10,10 +10,6 @@ const logger = new Logger();
 
 /**
  * Converts a font into the woff2 format.
- *
- * @param {Buffer} inputFont
- * @param {string} hash
- * @returns {Promise<Buffer | null>}
  */
 module.exports = async function convertFont(inputFont: Buffer, hash: string): Promise<Buffer | null> {
     const cacheFont = await readProcessingCache(hash, "woff2");

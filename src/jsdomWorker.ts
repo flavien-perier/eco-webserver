@@ -13,11 +13,6 @@ const STABILITY_TIMEOUT = 2000;
 
 /**
  * Loads items concurrently without changing their result order.
- *
- * @param {Array} items
- * @param {number} concurrency
- * @param {Function} loader
- * @returns {Promise<Array>}
  */
 async function loadOrdered(items: any[], concurrency: number, loader: Function): Promise<any[]> {
     const results = new Array(items.length);
@@ -40,10 +35,6 @@ async function loadOrdered(items: any[], concurrency: number, loader: Function):
 
 /**
  * Reads a local script directly from distDir, without using the resource cache.
- *
- * @param {URL} scriptUrl
- * @param {string} distDir
- * @returns {Promise<string>}
  */
 async function readLocalScript(scriptUrl: URL, distDir: string): Promise<string> {
     const pathname = decodeURIComponent(scriptUrl.pathname);
@@ -57,11 +48,6 @@ async function readLocalScript(scriptUrl: URL, distDir: string): Promise<string>
 
 /**
  * Loads a script source, returning an empty script when loading fails.
- *
- * @param {any} script
- * @param {URL} documentUrl
- * @param {Object} configuration
- * @returns {Promise<string>}
  */
 async function loadScript(script: any, documentUrl: URL, configuration: any): Promise<string> {
     const scriptSrc = script.getAttribute("src");
@@ -90,9 +76,6 @@ async function loadScript(script: any, documentUrl: URL, configuration: any): Pr
 
 /**
  * Waits for a quiet period after the last DOM mutation, with a hard deadline.
- *
- * @param {any} window
- * @returns {Promise<void>}
  */
 function waitForStableDom(window: any): Promise<void> {
     return new Promise(resolveStability => {
@@ -126,11 +109,6 @@ function waitForStableDom(window: any): Promise<void> {
 
 /**
  * Executes a rendering entirely inside the worker.
- *
- * @param {string} content
- * @param {string} requestUrl
- * @param {Object} configuration
- * @returns {Promise<string>}
  */
 async function render(content: string, requestUrl: string, configuration: any): Promise<string> {
     const documentUrl = new URL(requestUrl, `http://127.0.0.1:${configuration.port}`);

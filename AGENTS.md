@@ -5,7 +5,7 @@
 - `npm test` — full Jasmine suite (`jasmine --config=jasmine.json`, specs are `tests/**/*.spec.ts`). CI (`.github/workflows/test.yml`) runs `npm install && npm test` on Node 24.
 - Run one spec file: `npm test -- tests/server.spec.ts` (positional paths resolve from the repo root, not from `spec_dir`).
 - Run the server: `node cli.ts` (bin `eco-webserver`). No build/transpile step — Node 24 strips TypeScript types from `.ts` CommonJS sources at load time (amaro).
-- No lint, formatter, or typecheck tooling exists. Match existing style: 4-space indent, `require`/`module.exports`, JSDoc types on exports, native TS types on function signatures.
+- No lint, formatter, or typecheck tooling exists. Match existing style: 4-space indent, `require`/`module.exports`, native TS types on signatures and class fields. Keep JSDoc for behavior descriptions only, without redundant `@param`, `@returns` or `@type` tags.
 - `.ts` requires need explicit extensions (`require("./server.ts")`): extensionless resolution does not find `.ts` files, neither in sources nor in proxyquire stub keys (`"./configuration.ts"`) nor in `new Worker(<worker.ts path>)`.
 - Type stripping is not a transform: `enum`, `namespace`, `import x = require(...)` and parameter properties throw at load time in `.ts` — use union string types and plain object constants instead.
 

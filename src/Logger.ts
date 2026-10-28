@@ -8,8 +8,6 @@ const MAX_BUFFERED_LOGS = 10000;
 
 /**
  * Contains logs that have not yet been written to the log file.
- *
- * @type {string[]}
  */
 let logBuffer: string[] = [];
 let droppedLogs = 0;
@@ -17,8 +15,6 @@ let flushing = false;
 
 /**
  * Empties the log buffer with one asynchronous append.
- *
- * @returns {Promise<void>}
  */
 async function flushLogs(): Promise<void> {
     if (flushing || (logBuffer.length === 0 && droppedLogs === 0)) return;
@@ -44,9 +40,6 @@ setInterval(flushLogs, 60 * 1000);
 
 /**
  * Displays the content of a log in the console and adds this same log to the log buffer.
- *
- * @param {string} logLevel
- * @param {string} logMessage
  */
 function print(logLevel: string, logMessage: string): void {
     const message = `${logLevel}: [${new Date().toISOString()}] ${logMessage}`;
@@ -64,9 +57,6 @@ module.exports = class Logger {
 
     /**
      * Format the log to display a piece of information.
-     *
-     * @param {string} message
-     * @returns {void}
      */
     info(message: string): void {
         print("info", message);
@@ -74,10 +64,6 @@ module.exports = class Logger {
 
     /**
      * Format the log to display an error message.
-     *
-     * @param {string} message
-     * @param {any} error
-     * @returns {void}
      */
     error(message: string, error?: any): void {
         print("error", message);
@@ -88,12 +74,6 @@ module.exports = class Logger {
 
     /**
      * Format the log of a request sent to the server.
-     *
-     * @param {string} ip
-     * @param {string} userAgent
-     * @param {string} method
-     * @param {string} url
-     * @returns {void}
      */
     http(ip: string, userAgent: string, method: string, url: string): void {
         print("http", `[${ip}] [${userAgent}] - ${method}: ${url}`);
