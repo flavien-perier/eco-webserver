@@ -42,5 +42,5 @@
 
 - Default branch: `master`.
 - A GitHub **release** triggers `.github/workflows/npm-publish.yml` (`npm publish`). Bump the version in `package.json` and keep the Dockerfile label `org.opencontainers.image.version` in sync in the same commit.
-- Pushing an `x.y.z` **tag** triggers `.github/workflows/docker-tag.yml` (multi-arch amd64/armv7/arm64 → `flavienperier/eco-webserver:x.y.z` on Docker Hub).
-- Pushes and pull requests targeting `master` trigger `.github/workflows/docker-commit.yml`, which publishes `flavienperier/eco-webserver:commit-<sha>` and refreshes `latest` with the same multi-arch build.
+- Pushing an `x.y.z` **tag** triggers `.github/workflows/docker-tag.yml`, which runs the full test suite before the multi-arch build (amd64/armv7/arm64 → `flavienperier/eco-webserver:x.y.z` on Docker Hub).
+- Pushes and pull requests targeting `master` trigger `.github/workflows/docker-commit.yml`, which runs the full test suite before publishing `flavienperier/eco-webserver:commit-<sha>` and refreshing `latest` with the same multi-arch build.
