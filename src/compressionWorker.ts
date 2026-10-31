@@ -2,7 +2,8 @@
 
 const { parentPort } = require("worker_threads");
 
-const { gzipSync, brotliCompressSync, constants } = require("zlib");
+const { gzipSync, brotliCompressSync } = require("zlib");
+const { GZIP_OPTIONS, BROTLI_OPTIONS } = require("./compressionOptions.ts");
 
 /**
  * Returns an exact ArrayBuffer that can be transferred without cloning.
@@ -18,17 +19,13 @@ if (parentPort) {
         const transferList: ArrayBuffer[] = [];
 
         if (!message.encoding || message.encoding === "gzip") {
-            const gzipData = gzipSync(message.data, { level: 4 });
+            const gzipData = gzipSync(message.data, GZIP_OPTIONS);
             result.gzipData = toTransferableBuffer(gzipData);
             transferList.push(result.gzipData);
         }
 
         if (!message.encoding || message.encoding === "br") {
-            const brotliData = brotliCompressSync(message.data, {
-                params: {
-                    [constants.BROTLI_PARAM_QUALITY]: 4
-                }
-            });
+            const brotliData = brotliCompressSync(message.data, BROTLI_OPTIONS);
             result.brotliData = toTransferableBuffer(brotliData);
             transferList.push(result.brotliData);
         }

@@ -25,21 +25,21 @@ describe("processingCache", () => {
         await processingCache.flushProcessingCache();
 
         expect((await processingCache.readProcessingCache(hash, "js")).toString()).toEqual(afterProcessing);
-        expect(fs.readdirSync(TEST_CACHE)).toEqual([`v2-${hash}.js`]);
+        expect(fs.readdirSync(TEST_CACHE)).toEqual([`${hash}-v2.js`]);
     });
 
     it("Evicts the oldest artefacts above the configured size", async () => {
         await processingCache.writeProcessingCache("old cache contents", "old", "js");
         await processingCache.writeProcessingCache("new", "new", "js");
         await processingCache.flushProcessingCache();
-        const oldPath = `${TEST_CACHE}/v2-old.js`;
+        const oldPath = `${TEST_CACHE}/old-v2.js`;
         const oldDate = new Date(Date.now() - 60000);
         fs.utimesSync(oldPath, oldDate, oldDate);
 
         await processingCache.cleanProcessingCache(3);
 
         expect(fs.existsSync(oldPath)).toBeFalse();
-        expect(fs.existsSync(`${TEST_CACHE}/v2-new.js`)).toBeTrue();
+        expect(fs.existsSync(`${TEST_CACHE}/new-v2.js`)).toBeTrue();
     });
 
     it("Returns without waiting for a slow disk write", async () => {

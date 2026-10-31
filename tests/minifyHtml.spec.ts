@@ -83,9 +83,22 @@ describe("minifyHtml", () => {
         const fileHash = "htmlHash3";
 
         const expectedHtml = "<html lang=fr><p id=id1 class=\"class1 class2\">test</p><br/>"
-            + "<script type=text/javascript charset=utf-8 async>function test(){if(3===yes)return{a:4,b:\"test\",c:[4,5,\"(a == 3)\"]}}</script></html>";
+            + "<script async>function test(){if(3===yes)return{a:4,b:\"test\",c:[4,5,\"(a == 3)\"]}}</script></html>";
 
         expect(await minifyHtml(inputHtml, fileHash)).toEqual(expectedHtml);
+    });
+
+    it("Removes only redundant script types", async () => {
+        const inputHtml = '<script type="text/javascript">window.example = 1;</script>'
+            + '<script type="module">export default 1;</script>'
+            + '<script type="importmap">{"imports":{}}</script>'
+            + '<script type="application/ld+json">{}</script>';
+        const outputHtml = await minifyHtml(inputHtml, "htmlScriptTypesHash");
+
+        expect(outputHtml).toContain("<script>window.example=1;</script>");
+        expect(outputHtml).toContain('<script type=module>');
+        expect(outputHtml).toContain('<script type=importmap>');
+        expect(outputHtml).toContain('<script type=application/ld+json>');
     });
 
     it("Preserves comment-like text inside scripts", async () => {
@@ -120,7 +133,7 @@ describe("minifyHtml", () => {
         expect(await minifyHtml(inputHtml, fileHash)).toEqual(expectedHtml);
 
         // Modify cache file and read it
-        fs.writeFileSync(`${TEST_CACHE}/v2-${fileHash}.html`, "test");
+        fs.writeFileSync(`${TEST_CACHE}/${fileHash}-v2.html`, "test");
         expect(await minifyHtml(inputHtml, fileHash)).toEqual("test");
     });
 });

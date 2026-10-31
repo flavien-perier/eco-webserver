@@ -178,7 +178,7 @@ describe("server", () => {
         });
 
         it("Should display a page with etag", done => {
-            const etag = "d68ffeb0ba128b157bc38ed5620b0a2f66bf792d465b43b99d83d8e33571364b";
+            const etag = "24ee47295e0019f1d92ad68e8cc62a654e0ff7354ab57a09569d41bee90cc29c";
 
             supertest(proxyquire("../src/server.ts", mockConfiguration)())
                 .get("/")

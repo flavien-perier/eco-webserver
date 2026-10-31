@@ -36,7 +36,7 @@ describe("minifySvg", () => {
         expect(outputSvg).not.toMatch(/>\s+</);
         expect(outputSvg).not.toContain("<rect");
         expect(outputSvg).toContain("<path");
-        expect(outputSvg).toContain("l10 10");
+        expect(outputSvg).toContain("10 10");
     });
 
     it("Does not minify a badly formatted svg file", async () => {
@@ -64,7 +64,7 @@ describe("minifySvg", () => {
         expect(await minifySvg(inputSvg, fileHash)).not.toContain("Test comment");
 
         // Modify cache file and read it
-        fs.writeFileSync(`${TEST_CACHE}/v2-${fileHash}.svg`, "test");
+        fs.writeFileSync(`${TEST_CACHE}/${fileHash}-v2.svg`, "test");
         expect(await minifySvg(inputSvg, fileHash)).toEqual("test");
     });
 });

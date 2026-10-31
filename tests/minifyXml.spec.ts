@@ -43,7 +43,46 @@ describe("minifyXml", () => {
 
         const fileHash = "xmlHash2";
 
-        expect(await minifyXml(inputXml, fileHash)).toEqual(`<root><description>first line second line</description></root>`);
+        expect(await minifyXml(inputXml, fileHash)).toEqual(`<root><description>first line
+            second line</description></root>`);
+    });
+
+    it("Preserves spaces in text content and attributes", async () => {
+        const inputXml = `<root><description title="first  second">  first  second
+            third  </description></root>`;
+
+        expect(await minifyXml(inputXml, "xmlHashSpaces")).toEqual(inputXml);
+    });
+
+    it("Respects xml:space preserve and default", async () => {
+        const inputXml = `<root xml:space="preserve">
+            <description>  first  second  </description>
+            <group xml:space="default">
+                <value>42</value>
+            </group>
+        </root>`;
+        const expectedXml = `<root xml:space="preserve">
+            <description>  first  second  </description>
+            <group xml:space="default"><value>42</value></group>
+        </root>`;
+
+        expect(await minifyXml(inputXml, "xmlHashXmlSpace")).toEqual(expectedXml);
+    });
+
+    it("Does not confuse literal elements with CDATA placeholders", async () => {
+        const inputXml = `<root><eco-cdata-0/><![CDATA[  <tag>  value  </tag>  ]]><eco-cdata-1/></root>`;
+
+        expect(await minifyXml(inputXml, "xmlHashCdataCollision")).toEqual(inputXml);
+        expect(await minifyXml(`<root><eco-cdata-0/></root>`, "xmlHashCdataElement")).toEqual(`<root><eco-cdata-0/></root>`);
+    });
+
+    it("Removes comments and preserves CDATA byte for byte", async () => {
+        const inputXml = `<root><!-- remove --><![CDATA[ <!-- keep -->
+            <tag>  value  </tag> ]]><!-- remove --></root>`;
+        const expectedXml = `<root><![CDATA[ <!-- keep -->
+            <tag>  value  </tag> ]]></root>`;
+
+        expect(await minifyXml(inputXml, "xmlHashCommentsCdata")).toEqual(expectedXml);
     });
 
     it("Test cache", async () => {
@@ -61,7 +100,7 @@ describe("minifyXml", () => {
         expect(await minifyXml(inputXml, fileHash)).not.toContain("Test comment");
 
         // Modify cache file and read it
-        fs.writeFileSync(`${TEST_CACHE}/v2-${fileHash}.xml`, "test");
+        fs.writeFileSync(`${TEST_CACHE}/${fileHash}-v2.xml`, "test");
         expect(await minifyXml(inputXml, fileHash)).toEqual("test");
     });
 });

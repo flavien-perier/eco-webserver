@@ -6,6 +6,7 @@ const minifyCss = require("./minifyCss.ts");
 const minifyJs = require("./minifyJs.ts");
 const { writeProcessingCache, readProcessingCache } = require("./processingCache.ts");
 const { runCpuTask } = require("./cpuPool.ts");
+const { HTML_MINIFY_OPTIONS } = require("./minifierOptions.ts");
 const Logger = require("./Logger.ts");
 
 const logger = new Logger();
@@ -24,16 +25,9 @@ module.exports = async function minifyHtml(inputHtml: string, hash: string): Pro
     let outputHtml;
     try {
         outputHtml = await runCpuTask("html", inputHtml, () => minify(inputHtml, {
-            caseSensitive: true,
-            collapseWhitespace: true,
-            keepClosingSlash: true,
+            ...HTML_MINIFY_OPTIONS,
             minifyCSS: code => minifyCss(code, contentHash(code)),
             minifyJS: code => minifyJs(code, contentHash(code)),
-            removeAttributeQuotes: true,
-            removeComments: true,
-            removeEmptyAttributes: true,
-            removeScriptTypeAttributes: false,
-            removeStyleLinkTypeAttributes: true,
         }));
     } catch(err) {
         logger.error("Html minification error", err);

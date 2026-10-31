@@ -6,6 +6,7 @@ const { join } = require("path");
 
 const configuration = require("./configuration.ts").default;
 
+// Bump whenever a transformation or compression setting changes.
 const CACHE_VERSION = "v2";
 const DISK_CACHE_MAX_SIZE = Math.max(1, Number(process.env.ECO_DISK_CACHE_MAX_SIZE || configuration.diskCacheMaxSize) || 512 * 1024 * 1024);
 const CLEANUP_INTERVAL = Math.max(0, Number(configuration.diskCacheCleanupInterval ?? 60 * 60 * 1000));
@@ -33,7 +34,7 @@ async function cleanProcessingCache(maxSize: number = DISK_CACHE_MAX_SIZE): Prom
         throw err;
     }
 
-    const filesToStat = files.filter(file => file.startsWith(`${CACHE_VERSION}-`) && !file.endsWith(".tmp"));
+    const filesToStat = files.filter(file => file.includes(`-${CACHE_VERSION}.`) && !file.endsWith(".tmp"));
     const entries = [];
     let nextFileIndex = 0;
 
@@ -165,7 +166,7 @@ async function readProcessingCache(hash: string, fileFormat: string): Promise<Bu
  * Gives the location of the cached file.
  */
 function fileCacheDir(hash: string, fileFormat: string): string {
-    return join(configuration.cacheDir, `${CACHE_VERSION}-${hash}.${fileFormat}`);
+    return join(configuration.cacheDir, `${hash}-${CACHE_VERSION}.${fileFormat}`);
 }
 
 module.exports = {

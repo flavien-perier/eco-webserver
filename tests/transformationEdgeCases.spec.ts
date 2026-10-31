@@ -322,10 +322,10 @@ describe("transformation edge cases", () => {
 
             expect(first.subarray(0, 4).toString()).toBe("wOF2");
             expect(second).toEqual(first);
-            expect(fs.existsSync(join(TEST_CACHE, `v2-${firstHash}.woff2`))).toBeTrue();
-            expect(fs.existsSync(join(TEST_CACHE, `v2-${secondHash}.woff2`))).toBeTrue();
+            expect(fs.existsSync(join(TEST_CACHE, `${firstHash}-v2.woff2`))).toBeTrue();
+            expect(fs.existsSync(join(TEST_CACHE, `${secondHash}-v2.woff2`))).toBeTrue();
 
-            fs.writeFileSync(join(TEST_CACHE, `v2-${firstHash}.woff2`), "cached-a");
+            fs.writeFileSync(join(TEST_CACHE, `${firstHash}-v2.woff2`), "cached-a");
             expect(await convertFont(font, firstHash)).toEqual(Buffer.from("cached-a"));
             expect(await convertFont(font, secondHash)).toEqual(second);
         });

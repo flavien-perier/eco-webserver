@@ -4,6 +4,7 @@ const { Worker } = require("worker_threads");
 const { join } = require("path");
 
 const configuration = require("./configuration.ts").default;
+const { GZIP_OPTIONS, BROTLI_OPTIONS } = require("./compressionOptions.ts");
 
 const WORKER_PATH = join(__dirname, "compressionWorker.ts");
 const configuredMaxQueue = Number(process.env.ECO_COMPRESSION_MAX_QUEUE ?? configuration.compressionMaxQueue ?? 100);
@@ -21,15 +22,11 @@ type CompressionTask = {
  * Executed inside a worker.
  */
 function compressData(data: string | Buffer): { gzipData: Buffer; brotliData: Buffer } {
-    const { gzipSync, brotliCompressSync, constants } = require("zlib");
+    const { gzipSync, brotliCompressSync } = require("zlib");
 
     return {
-        gzipData: gzipSync(data, { level: 4 }),
-        brotliData: brotliCompressSync(data, {
-            params: {
-                [constants.BROTLI_PARAM_QUALITY]: 4
-            }
-        })
+        gzipData: gzipSync(data, GZIP_OPTIONS),
+        brotliData: brotliCompressSync(data, BROTLI_OPTIONS)
     };
 }
 

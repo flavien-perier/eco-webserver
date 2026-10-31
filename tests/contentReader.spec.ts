@@ -1,4 +1,5 @@
 const fs = require("fs");
+const { createHash } = require("crypto");
 const proxyquire = require("proxyquire").noPreserveCache();
 
 const TEST_FILE = "./tests/testDist/simple/cache-freshness.html";
@@ -109,6 +110,37 @@ describe("contentReader", () => {
         await value.responseData("br");
         expect(state.compressionCount).toEqual(2);
         expect(value.brotliData).toBeDefined();
+    });
+
+    it("Uses the final minified bytes as the resource validator", async () => {
+        const { readFile } = loadReader({}, {
+            minifyHtml: async () => "minified response",
+        });
+        const value = await readFile("index.html", "/index.html", "text/html", "");
+
+        expect(value.hash).toBe(createHash("sha256").update("minified response").digest("hex"));
+    });
+
+    it("Reuses a persistent compressed variant after a reader restart", async () => {
+        const artefacts = new Map();
+        const processingCache = {
+            readProcessingCache: async (hash, format) => artefacts.get(`${hash}.${format}`) || null,
+            writeProcessingCache: async (data, hash, format) => {
+                artefacts.set(`${hash}.${format}`, Buffer.from(data));
+            },
+        };
+
+        const firstReader = loadReader({}, { processingCache });
+        const first = await firstReader.readFile("index.html", "/index.html", "text/html", "gzip");
+        expect(firstReader.state.compressionCount).toEqual(1);
+        expect(Array.from(artefacts.keys()).some(key => key.endsWith(".gzip"))).toBeTrue();
+
+        const secondReader = loadReader({}, { processingCache });
+        const second = await secondReader.readFile("index.html", "/index.html", "text/html", "gzip");
+        const response = await second.responseData("gzip");
+
+        expect(secondReader.state.compressionCount).toEqual(0);
+        expect(response.body).toEqual(first.gzipData);
     });
 
     it("Applies backpressure to distinct cold resources", async () => {

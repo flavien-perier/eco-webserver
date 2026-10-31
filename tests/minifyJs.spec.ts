@@ -64,7 +64,7 @@ describe("minifyJs", () => {
 
         const fileHash = "jsHash2";
 
-        const expectedJs = "class A{constructor(a,b){this.a=a,this.b=b}method(){this.a+=this.b}get a(){return this.a}}const a=new A;";
+        const expectedJs = "class A{constructor(t,s){this.a=t,this.b=s}method(){this.a+=this.b}get a(){return this.a}}const a=new A;";
 
         expect(await minifyJs(inputJs, fileHash)).toEqual(expectedJs);
     });
@@ -129,7 +129,7 @@ describe("minifyJs", () => {
         expect(await minifyJs(inputJs, fileHash)).toEqual(expectedJs);
 
         // Modify cache file and read it
-        fs.writeFileSync(`${TEST_CACHE}/v2-${fileHash}.js`, "test");
+        fs.writeFileSync(`${TEST_CACHE}/${fileHash}-v2.js`, "test");
         expect(await minifyJs(inputJs, fileHash)).toEqual("test");
     });
 });

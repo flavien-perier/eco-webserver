@@ -208,7 +208,20 @@ class CacheValue {
     }
 
     /**
-     * Generates one compressed variant once and shares concurrent computations.
+     * Stores one compressed variant and reconciles the memory cache size.
+     */
+    setCompressedData(encoding: "gzip" | "br", buffer: Buffer): Buffer {
+        const dataProperty = encoding === "br" ? "brotliData" : "gzipData";
+        const previousSize = this.size;
+        this[dataProperty] = buffer;
+        this.updateSize();
+        refreshCachedResourceSize(this, previousSize);
+        return buffer;
+    }
+
+    /**
+     * Recovers or generates one compressed variant once and shares concurrent
+     * computations. Persistent entries are keyed by the final response bytes.
      */
     ensureCompression(encoding: "gzip" | "br"): Promise<Buffer> {
         const dataProperty = encoding === "br" ? "brotliData" : "gzipData";
@@ -216,16 +229,20 @@ class CacheValue {
         if (this[dataProperty]) return Promise.resolve(this[dataProperty]);
         if (this[promiseProperty]) return this[promiseProperty];
 
-        const promise = compressionPool.compress(this.data, encoding).then((compressed: any) => {
-            const previousSize = this.size;
-            const buffer = Buffer.isBuffer(compressed)
-                ? compressed
-                : encoding === "br" ? compressed.brotliData : compressed.gzipData;
-            this[dataProperty] = buffer;
-            this.updateSize();
-            refreshCachedResourceSize(this, previousSize);
-            return buffer;
-        }).finally(() => {
+        const promise = (async () => {
+            const hash = sha256Hex(this.data);
+            let buffer = await readProcessingCache(hash, encoding);
+
+            if (!buffer) {
+                const compressed = await compressionPool.compress(this.data, encoding);
+                buffer = Buffer.isBuffer(compressed)
+                    ? compressed
+                    : encoding === "br" ? compressed.brotliData : compressed.gzipData;
+                await writeProcessingCache(buffer, hash, encoding);
+            }
+
+            return this.setCompressedData(encoding, buffer);
+        })().finally(() => {
             this[promiseProperty] = null;
         });
         this[promiseProperty] = promise;
@@ -241,9 +258,25 @@ class CacheValue {
 
         if (acceptEncoding === undefined) {
             const previousSize = this.size;
-            const compressed = await compressionPool.compress(this.data);
-            this.gzipData = compressed.gzipData;
-            this.brotliData = compressed.brotliData;
+            const hash = sha256Hex(this.data);
+            const [cachedGzip, cachedBrotli] = await Promise.all([
+                readProcessingCache(hash, "gzip"),
+                readProcessingCache(hash, "br"),
+            ]);
+
+            if (cachedGzip && cachedBrotli) {
+                this.gzipData = cachedGzip;
+                this.brotliData = cachedBrotli;
+            } else {
+                const compressed = await compressionPool.compress(this.data);
+                this.gzipData = cachedGzip || compressed.gzipData;
+                this.brotliData = cachedBrotli || compressed.brotliData;
+                await Promise.all([
+                    cachedGzip ? null : writeProcessingCache(this.gzipData, hash, "gzip"),
+                    cachedBrotli ? null : writeProcessingCache(this.brotliData, hash, "br"),
+                ]);
+            }
+
             this.updateSize();
             refreshCachedResourceSize(this, previousSize);
             return;
@@ -314,6 +347,7 @@ class CacheValue {
                     break;
             }
 
+            this.hash = sha256Hex(this.data);
             await this.prepareRequestedCompressions(acceptEncoding);
         } else {
             this.data = originalData;

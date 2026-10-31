@@ -64,7 +64,7 @@ describe("minifyCss", () => {
 
         // Modify cache file and read it
         
-        fs.writeFileSync(`${TEST_CACHE}/v2-${fileHash}.css`, "test");
+        fs.writeFileSync(`${TEST_CACHE}/${fileHash}-v2.css`, "test");
         expect(await minifyCss(inputCss, fileHash)).toEqual("test");
     });
 });

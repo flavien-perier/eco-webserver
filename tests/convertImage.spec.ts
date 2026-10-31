@@ -53,7 +53,7 @@ describe("convertImage", () => {
         expect(await convertImage(png, fileHash)).toEqual(webp);
 
         // Modify cache file and read it
-        fs.writeFileSync(`${TEST_CACHE}/v2-${fileHash}.webp`, "test");
+        fs.writeFileSync(`${TEST_CACHE}/${fileHash}-v2.webp`, "test");
         expect(await convertImage(png, fileHash)).toEqual(Buffer.from("test"));
     });
 });

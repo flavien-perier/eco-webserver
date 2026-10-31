@@ -4,6 +4,7 @@ const { minify } = require("terser");
 
 const { writeProcessingCache, readProcessingCache } = require("./processingCache.ts");
 const { runCpuTask } = require("./cpuPool.ts");
+const { JS_MINIFY_OPTIONS } = require("./minifierOptions.ts");
 const Logger = require("./Logger.ts");
 
 const logger = new Logger();
@@ -22,12 +23,7 @@ module.exports = async function minifyJs(inputJs: string, hash: string): Promise
 
     try {
         outputJs = await runCpuTask("js", inputJs, async () => {
-            const result = await minify(inputJs, {
-                mangle: false,
-                compress: {
-                    drop_console: true
-                }
-            });
+            const result = await minify(inputJs, JS_MINIFY_OPTIONS);
             if (result.error) throw result.error;
             return result.code;
         });
