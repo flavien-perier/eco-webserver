@@ -43,6 +43,6 @@
 ## Release
 
 - Default branch: `master`.
-- A GitHub **release** triggers `.github/workflows/npm-publish.yml` (`npm publish`, OIDC trusted publishing via `id-token: write`, `NPM_TOKEN` as fallback). Bump the version in `package.json` and keep the Dockerfile label `org.opencontainers.image.version` in sync in the same commit.
+- A GitHub **release** triggers `.github/workflows/npm-publish.yml` (`npm publish` through OIDC trusted publishing via `id-token: write`; no npm token secret — npm 2FA-bypass tokens lose direct publish around January 2027). Bump the version in `package.json` and keep the Dockerfile label `org.opencontainers.image.version` in sync in the same commit.
 - Pushing an `x.y.z` **tag** triggers `.github/workflows/docker-tag.yml`, which runs the full test suite before the multi-arch build (amd64/arm64 → `flavienperier/eco-webserver:x.y.z` on Docker Hub).
 - Pushes and pull requests targeting `master` trigger `.github/workflows/docker-commit.yml`, which runs the full test suite before publishing `flavienperier/eco-webserver:commit-<sha>` and refreshing `latest` with the same multi-arch build.
