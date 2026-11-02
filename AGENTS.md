@@ -12,8 +12,9 @@
 
 ## Setup gotchas
 
-- `canvas` 3.x is N-API based: prebuilds cover current Node ABIs, `npm install` no longer compiles from source. The build deps remain only in the Docker builder stage for `sharp` armv7 (see below).
-- `sharp` (image → webp) is N-API: prebuilds exist for glibc and musl on amd64/arm64, but **no armv7 prebuild** — the arm/v7 Docker build compiles it from source, hence `vips-dev` in the builder stage and `vips` in the runtime image of the Dockerfile.
+- `canvas` 3.x is N-API based: prebuilds cover current Node ABIs, `npm install` no longer compiles from source.
+- `sharp` (image → webp) is N-API: prebuilds exist for glibc and musl on amd64/arm64.
+- Docker images are published for `linux/amd64` and `linux/arm64/v8` only: Node 24 ships no `linux/arm/v7` image (`node:24-alpine` has no armv7 manifest), so armv7 is not a supported platform. The builder stage still carries native build deps (`vips-dev`, cairo/pango) as a fallback when a prebuild is missing.
 - `wawoff2` (font → woff2) is wasm-based, no native toolchain needed. It returns `Uint8Array`, wrapped in `Buffer` in `src/convertFont.ts`.
 - `puppeteer-core` downloads no browser: it launches the system chromium at `chromiumPath` (env `ECO_CHROMIUM_PATH`, autodetected among common `/usr/bin` paths).
 - `jsdom` 30 removed the `ResourceLoader` export — `evaluateHtmlFile` in `src/contentReader.ts` loads and executes `<script>` sources manually in the jsdom VM context (no `resources` option).
@@ -43,5 +44,5 @@
 
 - Default branch: `master`.
 - A GitHub **release** triggers `.github/workflows/npm-publish.yml` (`npm publish`). Bump the version in `package.json` and keep the Dockerfile label `org.opencontainers.image.version` in sync in the same commit.
-- Pushing an `x.y.z` **tag** triggers `.github/workflows/docker-tag.yml`, which runs the full test suite before the multi-arch build (amd64/armv7/arm64 → `flavienperier/eco-webserver:x.y.z` on Docker Hub).
+- Pushing an `x.y.z` **tag** triggers `.github/workflows/docker-tag.yml`, which runs the full test suite before the multi-arch build (amd64/arm64 → `flavienperier/eco-webserver:x.y.z` on Docker Hub).
 - Pushes and pull requests targeting `master` trigger `.github/workflows/docker-commit.yml`, which runs the full test suite before publishing `flavienperier/eco-webserver:commit-<sha>` and refreshing `latest` with the same multi-arch build.
