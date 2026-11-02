@@ -8,6 +8,8 @@
     "js": "application/javascript",
     "json": "application/json",
 
+    "xml": "application/xml",
+
     "ico": "image/x-icon",
     "png": "image/png",
     "jpg": "image/jpeg",

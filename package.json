@@ -1,7 +1,8 @@
 {
   "name": "eco-webserver",
-  "version": "1.0.15",
+  "version": "2.0.0",
   "description": "Static file NodeJs server",
+  "type": "commonjs",
   "keywords": [
     "static",
     "web",
@@ -13,22 +14,36 @@
   ],
   "author": "Flavien PERIER <perier@flavien.io>",
   "license": "MIT",
-  "main": "cli.js",
-  "bin": {
-    "eco-webserver": "./cli.js"
+  "engines": {
+    "node": ">=24"
   },
+  "main": "lib/cli.js",
+  "bin": {
+    "eco-webserver": "./lib/cli.js"
+  },
+  "files": [
+    "lib"
+  ],
   "scripts": {
+    "build": "node --disable-warning=ExperimentalWarning scripts/build.ts",
+    "prepack": "npm run build",
     "test": "jasmine --config=jasmine.json"
   },
   "dependencies": {
-    "canvas": "2.10.1",
-    "jsdom": "20.0.0",
-    "terser": "5.15.0"
+    "canvas": "3.2.3",
+    "csso": "5.0.5",
+    "html-minifier-terser": "7.2.0",
+    "jsdom": "30.1.3",
+    "puppeteer-core": "25.16.0",
+    "sharp": "0.35.5",
+    "svgo": "4.1.0",
+    "terser": "5.51.2",
+    "wawoff2": "2.0.1"
   },
   "devDependencies": {
-    "jasmine": "4.4.0",
+    "jasmine": "7.0.0",
     "proxyquire": "2.1.3",
-    "supertest": "6.2.4"
+    "supertest": "7.3.1"
   },
   "repository": {
     "type": "git",

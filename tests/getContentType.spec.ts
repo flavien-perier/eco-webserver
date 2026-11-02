@@ -1,0 +1,31 @@
+const proxyquire = require("proxyquire").noPreserveCache();
+
+describe("getContentType", () => {
+    const mockConfiguration = {
+        "./configuration.ts": {
+            default: {
+                contentType: {
+                    "text": "text/plain",
+                    "binary": "application/octet-stream",
+                    "html": "text/html",
+                    "css": "text/css",
+                    "js": "application/javascript",
+                    "json": "application/json",
+                },
+            },
+            "@global": true,
+        }
+    };
+
+    it("No extension", () => {
+        expect(proxyquire("../src/getContentType.ts", mockConfiguration)("https://www.flavien.io/home")).toEqual("text/html");
+    });
+
+    it("Known extension", () => {
+        expect(proxyquire("../src/getContentType.ts", mockConfiguration)("https://www.flavien.io/style.css")).toEqual("text/css");
+    });
+
+    it("Unknown extension", () => {
+        expect(proxyquire("../src/getContentType.ts", mockConfiguration)("https://www.flavien.io/content.md")).toEqual("text/plain");
+    });
+});
