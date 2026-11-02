@@ -9,21 +9,23 @@ const configuration = require("./configuration.ts").default;
 const buildHeader = require("./buildHeader.ts");
 const getContentType = require("./getContentType.ts");
 const { readFile, readProxy } = require("./contentReader.ts");
+const { findProxyPrefix } = require("./proxyUrl.ts");
 const Logger = require("./Logger.ts");
 
 const logger = new Logger();
-const PROXY_PREFIXES = Object.keys(configuration.proxy).sort((a, b) => b.length - a.length);
 const PATH_CACHE_VALIDATION_INTERVAL = Math.max(1, Number(configuration.cacheValidationInterval) || 60 * 1000);
 const PATH_CACHE_MAX_ENTRIES = Math.max(1, Number(configuration.cacheMaxEntries) || 1000);
 const pathCache = new Map<string, { isFile: boolean; lastValidated: number }>();
+const MISSING_PATH_ERRORS = new Set(["ENOENT", "ENOTDIR", "ENAMETOOLONG"]);
 
 /**
  * Converts a request URL into a canonical path confined to distDir.
  */
-function resolveRequestPath(requestUrl: string): { requestPath: string; filePath: string } {
+function resolveRequestPath(requestUrl: string): { requestPath: string; encodedPath: string; filePath: string } {
     try {
         const parsedUrl = new URL(requestUrl || "/", "http://localhost");
-        const requestPath = decodeURIComponent(parsedUrl.pathname);
+        const encodedPath = parsedUrl.pathname;
+        const requestPath = decodeURIComponent(encodedPath);
         const distDir = resolve(configuration.distDir);
         const filePath = resolve(distDir, `.${requestPath}`);
 
@@ -31,7 +33,7 @@ function resolveRequestPath(requestUrl: string): { requestPath: string; filePath
             throw new Error("Invalid request path");
         }
 
-        return { requestPath, filePath };
+        return { requestPath, encodedPath, filePath };
     } catch(err) {
         const error: any = new Error("Invalid request path");
         error.statusCode = 400;
@@ -55,7 +57,8 @@ async function isFile(filePath: string): Promise<boolean> {
     try {
         result = (await lstat(filePath)).isFile();
     } catch(err) {
-        if (err.code !== "ENOENT") throw err;
+        // A path crossing a regular file or exceeding the name limit cannot be a file.
+        if (!MISSING_PATH_ERRORS.has(err.code)) throw err;
     }
 
     pathCache.delete(filePath);
@@ -86,9 +89,10 @@ module.exports = (): http.Server => {
 
         try {
             const requestUrl = req.url || "/";
-            const { requestPath, filePath } = resolveRequestPath(requestUrl);
+            const { requestPath, encodedPath, filePath } = resolveRequestPath(requestUrl);
             const acceptEncoding = typeof req.headers["accept-encoding"] === "string" ? req.headers["accept-encoding"] : "";
-            const proxyPrefix = PROXY_PREFIXES.find(url => requestPath.startsWith(url));
+            // Matched on the encoded path, exactly as the upstream URL is built.
+            const proxyPrefix = findProxyPrefix(encodedPath);
 
             let statusCode = 200;
             let statusMessage = "";

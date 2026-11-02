@@ -23,7 +23,7 @@ module.exports = async function minifyJson(inputJson: string, hash: string): Pro
     } catch (err) {
         if (err.statusCode === 503) throw err;
         logger.error("Json badly formatted", err);
-        outputJson = inputJson;
+        return inputJson;
     }
 
     await writeProcessingCache(outputJson, hash, "json");

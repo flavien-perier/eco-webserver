@@ -1,4 +1,5 @@
 const fs = require("fs");
+const http = require("http");
 const { resolve } = require("path");
 const proxyquire = require("proxyquire").noPreserveCache();
 
@@ -84,13 +85,20 @@ class FakeRequest {
     continued: boolean = false;
     aborted: boolean = false;
 
-    constructor(url: string, navigation: boolean) {
+    requestMethod: string;
+
+    constructor(url: string, navigation: boolean, method: string = "GET") {
         this.requestedUrl = url;
         this.navigation = navigation;
+        this.requestMethod = method;
     }
 
     url() {
         return this.requestedUrl;
+    }
+
+    method() {
+        return this.requestMethod;
     }
 
     isNavigationRequest() {
@@ -348,5 +356,42 @@ describe("renderChromium edge cases", () => {
         expect(missing.responses.length).toBe(1);
         expect(missing.responses[0].status).toBe(404);
         expect(missing.responses[0].body).toBe("Not found");
+    });
+
+    it("answers proxied routes from the upstream while pre-rendering", async () => {
+        let upstreamUrl = "";
+        const upstream = http.createServer((req, res) => {
+            upstreamUrl = req.url;
+            res.writeHead(201, { "Content-Type": "application/json" });
+            res.end('{"items":[]}');
+        });
+        await new Promise<void>(resolveListen => upstream.listen(0, "127.0.0.1", resolveListen));
+
+        try {
+            const api = new FakeRequest("http://127.0.0.1:8080/api/items?page=2", false);
+            const post = new FakeRequest("http://127.0.0.1:8080/api/items", false, "POST");
+            const page = createPage({
+                goto: async () => {
+                    await page.requestHandler(api);
+                    await page.requestHandler(post);
+                },
+            });
+            const renderChromium = loadChromium({ newPage: async () => page }, {
+                proxy: { "/api": `http://127.0.0.1:${upstream.address().port}/v1` },
+                proxyTimeout: 1000,
+                proxyMaxSize: 1024,
+            });
+
+            expect(await renderChromium("<html></html>", "/proxied.html")).toBe(RENDERED_HTML);
+            expect(upstreamUrl).toBe("/v1/items?page=2");
+            expect(api.responses).toEqual([{
+                status: 201,
+                contentType: "application/json",
+                body: Buffer.from('{"items":[]}'),
+            }]);
+            expect(post.responses[0].status).toBe(405);
+        } finally {
+            await new Promise(resolveClose => upstream.close(resolveClose));
+        }
     });
 });

@@ -100,7 +100,7 @@ describe("minifyXml", () => {
         expect(await minifyXml(inputXml, fileHash)).not.toContain("Test comment");
 
         // Modify cache file and read it
-        fs.writeFileSync(`${TEST_CACHE}/${fileHash}-v2.xml`, "test");
+        fs.writeFileSync(`${TEST_CACHE}/${fileHash}-v3.xml`, "test");
         expect(await minifyXml(inputXml, fileHash)).toEqual("test");
     });
 });

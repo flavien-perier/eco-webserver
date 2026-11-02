@@ -17,11 +17,16 @@
   "engines": {
     "node": ">=24"
   },
-  "main": "cli.ts",
+  "main": "lib/cli.js",
   "bin": {
-    "eco-webserver": "./cli.ts"
+    "eco-webserver": "./lib/cli.js"
   },
+  "files": [
+    "lib"
+  ],
   "scripts": {
+    "build": "node --disable-warning=ExperimentalWarning scripts/build.ts",
+    "prepack": "npm run build",
     "test": "jasmine --config=jasmine.json"
   },
   "dependencies": {

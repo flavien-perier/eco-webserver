@@ -1,9 +1,10 @@
+const { tmpdir } = require("os");
 const fs = require("fs");
 const { randomUUID } = require("crypto");
 const { join } = require("path");
 const proxyquire = require("proxyquire").noPreserveCache();
 
-const TEST_ROOT = join("/tmp/opencode", `raw-resource-cache-edge-${process.pid}-${randomUUID()}`);
+const TEST_ROOT = join(tmpdir(), `raw-resource-cache-edge-${process.pid}-${randomUUID()}`);
 
 describe("rawResourceCache edge cases", () => {
     let testDirectory;

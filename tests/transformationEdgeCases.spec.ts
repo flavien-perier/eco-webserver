@@ -1,10 +1,11 @@
+const { tmpdir } = require("os");
 const fs = require("fs");
 const { join } = require("path");
 const { randomUUID } = require("crypto");
 const sharp = require("sharp");
 const proxyquire = require("proxyquire").noPreserveCache();
 
-const TEST_CACHE = join("/tmp/opencode", `eco-webserver-transformations-${process.pid}-${randomUUID()}`);
+const TEST_CACHE = join(tmpdir(), `eco-webserver-transformations-${process.pid}-${randomUUID()}`);
 
 const mockConfiguration = {
     "./configuration.ts": {
@@ -322,10 +323,10 @@ describe("transformation edge cases", () => {
 
             expect(first.subarray(0, 4).toString()).toBe("wOF2");
             expect(second).toEqual(first);
-            expect(fs.existsSync(join(TEST_CACHE, `${firstHash}-v2.woff2`))).toBeTrue();
-            expect(fs.existsSync(join(TEST_CACHE, `${secondHash}-v2.woff2`))).toBeTrue();
+            expect(fs.existsSync(join(TEST_CACHE, `${firstHash}-v3.woff2`))).toBeTrue();
+            expect(fs.existsSync(join(TEST_CACHE, `${secondHash}-v3.woff2`))).toBeTrue();
 
-            fs.writeFileSync(join(TEST_CACHE, `${firstHash}-v2.woff2`), "cached-a");
+            fs.writeFileSync(join(TEST_CACHE, `${firstHash}-v3.woff2`), "cached-a");
             expect(await convertFont(font, firstHash)).toEqual(Buffer.from("cached-a"));
             expect(await convertFont(font, secondHash)).toEqual(second);
         });

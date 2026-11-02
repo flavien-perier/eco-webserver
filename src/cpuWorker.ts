@@ -20,15 +20,7 @@ const {
 async function execute(operation: string, input: string | Buffer): Promise<string | Buffer> {
     switch(operation) {
         case "html":
-            return minifyHtmlDocument(input, {
-                ...HTML_MINIFY_OPTIONS,
-                minifyCSS: async code => csso.minify(code, CSS_MINIFY_OPTIONS).css,
-                minifyJS: async code => {
-                    const result = await minify(code, JS_MINIFY_OPTIONS);
-                    if (result.error) throw result.error;
-                    return result.code;
-                },
-            });
+            return minifyHtmlDocument(input, HTML_MINIFY_OPTIONS);
         case "js": {
             const result = await minify(input, JS_MINIFY_OPTIONS);
             if (result.error) throw result.error;

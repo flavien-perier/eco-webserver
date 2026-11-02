@@ -1,10 +1,11 @@
+const { tmpdir } = require("os");
 const { spawnSync } = require("child_process");
 const { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } = require("fs");
 const { join, resolve } = require("path");
 
 const configurationPath = resolve(__dirname, "../src/configuration.ts");
 const defaultConfigurationPath = resolve(__dirname, "../src/ecoconf.js");
-const temporaryRoot = "/tmp/opencode";
+const temporaryRoot = tmpdir();
 
 function cleanEnvironment() {
     const environment = { ...process.env };

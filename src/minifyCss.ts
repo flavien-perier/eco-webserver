@@ -25,7 +25,7 @@ module.exports = async function minifyCss(inputCss: string, hash: string): Promi
     } catch(err) {
         if (err.statusCode === 503) throw err;
         logger.error("Css badly formatted", err);
-        outputCss = inputCss;
+        return inputCss;
     }
 
     await writeProcessingCache(outputCss, hash, "css");

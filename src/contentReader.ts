@@ -20,6 +20,7 @@ const { CompressionPool } = require("./compressionPool.ts");
 const { readProcessingCache, writeProcessingCache } = require("./processingCache.ts");
 const { preferredEncoding } = require("./contentEncoding.ts");
 const requestBuffer = require("./httpRequest.ts");
+const { buildProxyUrl } = require("./proxyUrl.ts");
 const TaskLimiter = require("./taskLimiter.ts");
 const Logger = require("./Logger.ts");
 
@@ -66,7 +67,6 @@ const PROCESSING_CONCURRENCY = Math.max(1, Number(configuration.processingConcur
 const PROCESSING_MAX_QUEUE = Math.max(0, Number(configuration.processingMaxQueue ?? 100));
 const SSR_CACHE_TTL = Math.max(0, Number(configuration.ssrCacheTtl) || 0);
 const processingLimiter = new TaskLimiter(PROCESSING_CONCURRENCY, PROCESSING_MAX_QUEUE);
-const PROXY_PREFIXES = Object.keys(configuration.proxy).sort((a, b) => b.length - a.length);
 
 /**
  * Calculates the sha256 sum of a resource.
@@ -81,22 +81,6 @@ function resolveLocalPath(filePath: string): string {
     const localPath = resolve(distDir, `.${filePath.startsWith("/") ? filePath : `/${filePath}`}`);
     if (localPath !== distDir && !localPath.startsWith(distDir + sep)) throw new Error("Invalid resource path");
     return localPath;
-}
-
-/**
- * Builds an upstream URL while preserving the configured origin.
- */
-function buildProxyUrl(requestUrl: string): URL {
-    const request = new URL(requestUrl, "http://localhost");
-    const requestBaseUrl = PROXY_PREFIXES.find(key => request.pathname.startsWith(key));
-    const proxyUrl = new URL(configuration.proxy[requestBaseUrl]);
-    const basePath = proxyUrl.pathname.endsWith("/") ? proxyUrl.pathname.slice(0, -1) : proxyUrl.pathname;
-    const suffix = request.pathname.slice(requestBaseUrl.length);
-
-    proxyUrl.pathname = `${basePath}${suffix}` || "/";
-    proxyUrl.search = request.search;
-    proxyUrl.hash = "";
-    return proxyUrl;
 }
 
 /**
@@ -254,6 +238,15 @@ class CacheValue {
      * omit Accept-Encoding retain the historical eager gzip+Brotli behavior.
      */
     async prepareRequestedCompressions(acceptEncoding?: string): Promise<void> {
+        try {
+            await this.compressVariants(acceptEncoding);
+        } catch(err) {
+            // Saturated compression is retried lazily by responseData.
+            if (err.statusCode !== 503) throw err;
+        }
+    }
+
+    async compressVariants(acceptEncoding?: string): Promise<void> {
         if (this.dataType !== "txt") return;
 
         if (acceptEncoding === undefined) {
@@ -291,8 +284,14 @@ class CacheValue {
      */
     async responseData(acceptEncoding: string): Promise<{ encoding: "br" | "gzip" | false; body: string | Buffer }> {
         const encoding = this.dataType === "txt" ? preferredEncoding(acceptEncoding) : false;
-        if (encoding === "br") return { encoding, body: await this.ensureCompression("br") };
-        if (encoding === "gzip") return { encoding, body: await this.ensureCompression("gzip") };
+        if (encoding) {
+            try {
+                return { encoding, body: await this.ensureCompression(encoding) };
+            } catch(err) {
+                // A saturated compression queue must not fail content already in memory.
+                if (err.statusCode !== 503) throw err;
+            }
+        }
         return { encoding: false, body: this.data };
     }
 
@@ -462,7 +461,8 @@ async function getResource(cacheKey: string, loader: () => Promise<CacheValue>):
     let pendingResource = pendingResources.get(cacheKey);
     if (!pendingResource) {
         pendingResource = processingLimiter.run(loader).then(cacheValue => {
-            storeCachedResource(cacheKey, cacheValue);
+            // Upstream errors are transient: they are served once, never retained.
+            if (cacheValue.statusCode < 400) storeCachedResource(cacheKey, cacheValue);
             return cacheValue;
         }).finally(() => {
             pendingResources.delete(cacheKey);
@@ -479,7 +479,11 @@ async function getResource(cacheKey: string, loader: () => Promise<CacheValue>):
  * Reads the contents of a resource from the `dist` folder.
  */
 function readFile(filePath: string, requestUrl: string, contentType: string, acceptEncoding?: string): Promise<CacheValue> {
-    const cacheKey = configuration.enableIsomorphic && contentType === configuration.contentType.html ? requestUrl : filePath;
+    // Rendered HTML depends on the request URL, but also on the file it was
+    // rendered from: a cached 404/index fallback must never shadow the real page.
+    const cacheKey = configuration.enableIsomorphic && contentType === configuration.contentType.html
+        ? `${filePath}\0${requestUrl}`
+        : filePath;
     return getResource(cacheKey, async () => {
         const cacheValue = new CacheValue(cacheKey);
         await cacheValue.localFile(filePath, requestUrl, contentType, acceptEncoding);

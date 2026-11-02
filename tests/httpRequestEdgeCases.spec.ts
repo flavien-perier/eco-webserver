@@ -165,6 +165,22 @@ describe("httpRequest edge cases", () => {
         expect(timers.size).toBe(0);
     });
 
+    it("bounds the total download time of an upstream that keeps trickling bytes", async () => {
+        server.on("request", (req, res) => {
+            res.writeHead(200);
+            const interval = setInterval(() => res.write("."), 20);
+            res.on("close", () => clearInterval(interval));
+        });
+
+        const startedAt = Date.now();
+        const rejection = await request("/", 150, 1024 * 1024).then(() => null, err => err);
+
+        expect(rejection).toEqual(jasmine.any(Error));
+        expect(rejection.message).toBe("Remote request timed out after 150 ms");
+        expect(rejection.statusCode).toBe(504);
+        expect(Date.now() - startedAt).toBeLessThan(1000);
+    });
+
     it("rejects when the connection closes before a response", async () => {
         server.on("request", (req, res) => res.socket.end());
 

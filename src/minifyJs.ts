@@ -30,7 +30,7 @@ module.exports = async function minifyJs(inputJs: string, hash: string): Promise
     } catch(err) {
         if (err.statusCode === 503) throw err;
         logger.error("Compression error with terser", err);
-        outputJs = inputJs;
+        return inputJs;
     }
 
     await writeProcessingCache(outputJs, hash, "js");

@@ -40,6 +40,27 @@ describe("convertImage", () => {
         expect(await convertImage(brokenImage, "imageHash2")).toBeNull();
     });
 
+    async function twoFrames(): Promise<Buffer[]> {
+        const frame = background => sharp({ create: { width: 4, height: 4, channels: 3, background } }).png().toBuffer();
+        return [await frame("red"), await frame("blue")];
+    }
+
+    it("Keeps every frame of an animated GIF", async () => {
+        const gif = await sharp(await twoFrames(), { join: { animated: true } }).gif().toBuffer();
+
+        const webp = await convertImage(gif, "imageAnimatedHash");
+        const metadata = await sharp(webp).metadata();
+
+        expect(metadata.format).toEqual("webp");
+        expect(metadata.pages).toEqual(2);
+    });
+
+    it("Keeps a multi-page TIFF unconverted", async () => {
+        const tiff = await sharp(await twoFrames(), { join: { animated: true } }).tiff().toBuffer();
+
+        expect(await convertImage(tiff, "imageMultiPageHash")).toBeNull();
+    });
+
     it("Test cache", async () => {
         const png = await sharp({ create: { width: 4, height: 4, channels: 3, background: { r: 200, g: 50, b: 50 } } }).png().toBuffer();
 
@@ -53,7 +74,7 @@ describe("convertImage", () => {
         expect(await convertImage(png, fileHash)).toEqual(webp);
 
         // Modify cache file and read it
-        fs.writeFileSync(`${TEST_CACHE}/${fileHash}-v2.webp`, "test");
+        fs.writeFileSync(`${TEST_CACHE}/${fileHash}-v3.webp`, "test");
         expect(await convertImage(png, fileHash)).toEqual(Buffer.from("test"));
     });
 });

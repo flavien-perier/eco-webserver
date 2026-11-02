@@ -115,6 +115,57 @@ describe("minifyHtml", () => {
         expect(output).not.toContain("console.log");
     });
 
+    for (const [mode, padding] of [["locally", ""], ["in a worker", "x".repeat(70 * 1024)]]) {
+        it(`Keeps style attributes and media queries when minifying ${mode}`, async () => {
+            const inputHtml = `<html><head><link rel="stylesheet" href="a.css" media="screen and (max-width: 600px)">`
+                + `<style media="print">p { color: red; }</style></head>`
+                + `<body><div style="color: red; margin: 0px">${padding}</div></body></html>`;
+            const output = await minifyHtml(inputHtml, `htmlInlineCss-${mode}`);
+
+            expect(output).toContain("<div style=color:red;margin:0>");
+            expect(output).toContain('media="screen and (max-width:600px)"');
+            expect(output).toContain("media=print");
+            expect(output).toContain("p{color:red}");
+        });
+
+        it(`Minifies event handlers with bare returns ${mode}`, async () => {
+            const inputHtml = `<html><body><!-- remove -->\n    <button onclick="doIt();   return false;">Go</button>`
+                + `<script type="module">import value from "./value.js"; console.log(value);</script>`
+                + `<p>${padding}</p></body></html>`;
+            const output = await minifyHtml(inputHtml, `htmlInlineJs-${mode}`);
+
+            expect(output).not.toContain("remove");
+            expect(output).toContain("onclick=\"return doIt(),!1;\"");
+            expect(output).toContain('import value from"./value.js"');
+        });
+    }
+
+    it("Serves but never persists the original page when minification fails", async () => {
+        const failingMinifyHtml = proxyquire("../src/minifyHtml.ts", {
+            ...mockConfiguration,
+            "./processingCache.ts": { ...processingCache, "@global": true },
+            "./cpuPool.ts": { runCpuTask: async () => { throw new Error("CPU worker exited with code 1"); } },
+        });
+
+        expect(await failingMinifyHtml("<p>  raw  </p>", "htmlFailureHash")).toBe("<p>  raw  </p>");
+        await processingCache.flushProcessingCache();
+        expect(fs.existsSync(`${TEST_CACHE}/htmlFailureHash-v3.html`)).toBeFalse();
+    });
+
+    it("Propagates a saturated CPU queue instead of caching the original page", async () => {
+        const saturated: any = new Error("CPU worker queue is full");
+        saturated.statusCode = 503;
+        const saturatedMinifyHtml = proxyquire("../src/minifyHtml.ts", {
+            ...mockConfiguration,
+            "./processingCache.ts": { ...processingCache, "@global": true },
+            "./cpuPool.ts": { runCpuTask: async () => { throw saturated; } },
+        });
+
+        await expectAsync(saturatedMinifyHtml("<p>raw</p>", "htmlSaturatedHash")).toBeRejectedWith(saturated);
+        await processingCache.flushProcessingCache();
+        expect(fs.existsSync(`${TEST_CACHE}/htmlSaturatedHash-v3.html`)).toBeFalse();
+    });
+
     it("Test cache", async () => {
         const inputHtml = `<html lang="fr">
             <!-- Test
@@ -133,7 +184,7 @@ describe("minifyHtml", () => {
         expect(await minifyHtml(inputHtml, fileHash)).toEqual(expectedHtml);
 
         // Modify cache file and read it
-        fs.writeFileSync(`${TEST_CACHE}/${fileHash}-v2.html`, "test");
+        fs.writeFileSync(`${TEST_CACHE}/${fileHash}-v3.html`, "test");
         expect(await minifyHtml(inputHtml, fileHash)).toEqual("test");
     });
 });

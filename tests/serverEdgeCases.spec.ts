@@ -1,10 +1,11 @@
+const { tmpdir } = require("os");
 const fs = require("fs");
 const http = require("http");
 const path = require("path");
 const { gunzipSync } = require("zlib");
 const proxyquire = require("proxyquire").noPreserveCache();
 
-const TEMP_ROOT = "/tmp/opencode";
+const TEMP_ROOT = tmpdir();
 
 type RawResponse = {
     statusCode: number;
@@ -250,6 +251,46 @@ describe("server HTTP edge cases", () => {
         expect(response.statusCode).toEqual(200);
         expect(httpCalls).toEqual([]);
         expect(fs.existsSync(path.join(rootDir, "server.log"))).toBeFalse();
+    });
+
+    it("falls back to the SPA index for a path that crosses a regular file or is too long", async () => {
+        const server = await startServer();
+
+        for (const requestPath of ["/index.html/anything", `/${"a".repeat(300)}`, `/index.html/${"b".repeat(300)}`]) {
+            const response = await requestRaw(server, requestPath);
+
+            expect(response.statusCode).withContext(requestPath).toEqual(200);
+            expect(response.body.toString()).withContext(requestPath).toContain("edge case");
+        }
+    });
+
+    it("answers 404 for a path that crosses a regular file when use404File is enabled", async () => {
+        fs.writeFileSync(path.join(distDir, "404.html"), "<!doctype html><html><body>missing page</body></html>");
+        const server = await startServer({ use404File: true });
+
+        const response = await requestRaw(server, "/index.html/anything");
+
+        expect(response.statusCode).toEqual(404);
+        expect(response.body.toString()).toContain("missing page");
+    });
+
+    it("does not proxy a path whose prefix only matches once percent-decoded", async () => {
+        let upstreamRequests = 0;
+        const upstream = http.createServer((req, res) => {
+            upstreamRequests++;
+            res.end("upstream");
+        });
+        servers.push(upstream);
+        await new Promise<void>(resolve => upstream.listen(0, "127.0.0.1", resolve));
+        const server = await startServer({ proxy: { "/api/": `http://127.0.0.1:${upstream.address().port}/` } });
+
+        const encoded = await requestRaw(server, "/api%2Fusers");
+        const proxied = await requestRaw(server, "/api/users");
+
+        expect(encoded.statusCode).toEqual(200);
+        expect(encoded.body.toString()).toContain("edge case");
+        expect(proxied.body.toString()).toEqual("upstream");
+        expect(upstreamRequests).toEqual(1);
     });
 
     it("maps a proxy saturation error to an empty retryable 503", async () => {

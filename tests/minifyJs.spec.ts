@@ -129,7 +129,7 @@ describe("minifyJs", () => {
         expect(await minifyJs(inputJs, fileHash)).toEqual(expectedJs);
 
         // Modify cache file and read it
-        fs.writeFileSync(`${TEST_CACHE}/${fileHash}-v2.js`, "test");
+        fs.writeFileSync(`${TEST_CACHE}/${fileHash}-v3.js`, "test");
         expect(await minifyJs(inputJs, fileHash)).toEqual("test");
     });
 });

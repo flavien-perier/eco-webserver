@@ -1,9 +1,10 @@
+const { tmpdir } = require("os");
 const fs = require("fs");
 const { randomUUID } = require("crypto");
 const { dirname, join } = require("path");
 const proxyquire = require("proxyquire").noPreserveCache();
 
-const TEST_ROOT = join("/tmp/opencode", `processing-cache-edge-${process.pid}-${randomUUID()}`);
+const TEST_ROOT = join(tmpdir(), `processing-cache-edge-${process.pid}-${randomUUID()}`);
 
 describe("processingCache edge cases", () => {
     let testDirectory;
@@ -75,7 +76,7 @@ describe("processingCache edge cases", () => {
         const cache = loadCache();
         const corrupted = Buffer.from([0, 255, 1, 2, 0, 128]);
         fs.mkdirSync(cacheDir, { recursive: true });
-        fs.writeFileSync(join(cacheDir, "corrupt-v2.js"), corrupted);
+        fs.writeFileSync(join(cacheDir, "corrupt-v3.js"), corrupted);
 
         const result = await cache.readProcessingCache("corrupt", "js");
 
@@ -186,32 +187,46 @@ describe("processingCache edge cases", () => {
     it("keeps an exactly full cache and evicts oldest artefacts only above the limit", async () => {
         const cache = loadCache();
         fs.mkdirSync(cacheDir, { recursive: true });
-        fs.writeFileSync(join(cacheDir, "old-v2.js"), "1234");
-        fs.writeFileSync(join(cacheDir, "new-v2.js"), "5678");
+        fs.writeFileSync(join(cacheDir, "old-v3.js"), "1234");
+        fs.writeFileSync(join(cacheDir, "new-v3.js"), "5678");
         const oldDate = new Date(Date.now() - 60000);
-        fs.utimesSync(join(cacheDir, "old-v2.js"), oldDate, oldDate);
+        fs.utimesSync(join(cacheDir, "old-v3.js"), oldDate, oldDate);
 
         await cache.cleanProcessingCache(8);
-        expect(fs.existsSync(join(cacheDir, "old-v2.js"))).toBeTrue();
+        expect(fs.existsSync(join(cacheDir, "old-v3.js"))).toBeTrue();
 
         await cache.cleanProcessingCache(7);
-        expect(fs.existsSync(join(cacheDir, "old-v2.js"))).toBeFalse();
-        expect(fs.existsSync(join(cacheDir, "new-v2.js"))).toBeTrue();
+        expect(fs.existsSync(join(cacheDir, "old-v3.js"))).toBeFalse();
+        expect(fs.existsSync(join(cacheDir, "new-v3.js"))).toBeTrue();
+    });
+
+    it("cleanup removes artefacts written by previous cache versions", async () => {
+        const cache = loadCache();
+        const hash = "a".repeat(64);
+        fs.mkdirSync(cacheDir, { recursive: true });
+        fs.writeFileSync(join(cacheDir, `${hash}.html`), "unversioned");
+        fs.writeFileSync(join(cacheDir, `${hash}-v2.br`), "previous version");
+        fs.writeFileSync(join(cacheDir, `${hash}-v3.br`), "current version");
+        fs.writeFileSync(join(cacheDir, "notes.html"), "not an artefact");
+
+        await cache.cleanProcessingCache(1024);
+
+        expect(fs.readdirSync(cacheDir).sort()).toEqual([`${hash}-v3.br`, "notes.html"]);
     });
 
     it("cleanup ignores temporary files and artefacts with other prefixes", async () => {
         const cache = loadCache();
         fs.mkdirSync(cacheDir, { recursive: true });
-        fs.writeFileSync(join(cacheDir, "current-v2.js"), "1234");
-        fs.writeFileSync(join(cacheDir, "current-v2.js.pid.tmp"), "temporary");
+        fs.writeFileSync(join(cacheDir, "current-v3.js"), "1234");
+        fs.writeFileSync(join(cacheDir, "current-v3.js.pid.tmp"), "temporary");
         fs.writeFileSync(join(cacheDir, "v1-old.js"), "old prefix");
         fs.writeFileSync(join(cacheDir, "unrelated.txt"), "unrelated");
 
         await cache.cleanProcessingCache(4);
 
         expect(fs.readdirSync(cacheDir).sort()).toEqual([
-            "current-v2.js",
-            "current-v2.js.pid.tmp",
+            "current-v3.js",
+            "current-v3.js.pid.tmp",
             "unrelated.txt",
             "v1-old.js",
         ]);
@@ -221,20 +236,20 @@ describe("processingCache edge cases", () => {
         const unlinked = [];
         const cache = loadCache({}, {
             ...fs.promises,
-            readdir: async () => ["keep-v2.js", "old-v2.js", "vanished-v2.js", "gone-v2.js"],
+            readdir: async () => ["keep-v3.js", "old-v3.js", "vanished-v3.js", "gone-v3.js"],
             stat: async filePath => {
-                if (filePath.endsWith("gone-v2.js")) {
+                if (filePath.endsWith("gone-v3.js")) {
                     const error = new Error("gone");
                     error.code = "ENOENT";
                     throw error;
                 }
-                const mtimes = { "keep-v2.js": 3000, "old-v2.js": 2000, "vanished-v2.js": 1000 };
+                const mtimes = { "keep-v3.js": 3000, "old-v3.js": 2000, "vanished-v3.js": 1000 };
                 return { size: 10, mtimeMs: mtimes[filePath.split("/").pop()] };
             },
             unlink: async filePath => {
                 const name = filePath.split("/").pop();
                 unlinked.push(name);
-                if (name === "vanished-v2.js") {
+                if (name === "vanished-v3.js") {
                     const error = new Error("vanished");
                     error.code = "ENOENT";
                     throw error;
@@ -244,7 +259,7 @@ describe("processingCache edge cases", () => {
 
         await cache.cleanProcessingCache(15);
 
-        expect(unlinked).toEqual(["vanished-v2.js", "old-v2.js"]);
+        expect(unlinked).toEqual(["vanished-v3.js", "old-v3.js"]);
     });
 
     it("runs best-effort cleanup after every write when the interval is zero", async () => {
@@ -253,11 +268,11 @@ describe("processingCache edge cases", () => {
         await cache.writeProcessingCache("old", "old", "js");
         await cache.flushProcessingCache();
         const oldDate = new Date(Date.now() - 60000);
-        fs.utimesSync(join(cacheDir, "old-v2.js"), oldDate, oldDate);
+        fs.utimesSync(join(cacheDir, "old-v3.js"), oldDate, oldDate);
         await cache.writeProcessingCache("new", "new", "js");
         await cache.flushProcessingCache();
 
-        expect(fs.existsSync(join(cacheDir, "old-v2.js"))).toBeFalse();
+        expect(fs.existsSync(join(cacheDir, "old-v3.js"))).toBeFalse();
         expect((await cache.readProcessingCache("new", "js")).toString()).toEqual("new");
     });
 
@@ -293,6 +308,6 @@ describe("processingCache edge cases", () => {
 
         expect(duringWrite.toString()).toEqual("original");
         expect((await cache.readProcessingCache("atomic", "js")).toString()).toEqual("replacement");
-        expect(fs.readdirSync(cacheDir)).toEqual(["atomic-v2.js"]);
+        expect(fs.readdirSync(cacheDir)).toEqual(["atomic-v3.js"]);
     });
 });

@@ -1,8 +1,9 @@
+const { tmpdir } = require("os");
 const fs = require("fs");
 const { join } = require("path");
 const proxyquire = require("proxyquire").noPreserveCache();
 
-const FIXTURE_ROOT = join("/tmp/opencode", `eco-content-reader-edge-${process.pid}`);
+const FIXTURE_ROOT = join(tmpdir(), `eco-content-reader-edge-${process.pid}`);
 
 const CONTENT_TYPES = {
     html: "text/html",
@@ -365,7 +366,7 @@ describe("contentReader edge cases", () => {
         expect(state.compressionCount).toBe(0);
     });
 
-    it("Keeps proxied text charset and error status while caching the response", async () => {
+    it("Keeps proxied text charset and error status without caching the error", async () => {
         let requests = 0;
         let minifications = 0;
         const { readProxy } = loadReader({ proxy: { "/api": "http://upstream.test" } }, {
@@ -385,9 +386,31 @@ describe("contentReader edge cases", () => {
         expect(first.data).toBe("é🌍");
         expect(first.contentType).toBe("Text/HTML; charset=UTF-8");
         expect(first.statusCode).toBe(404);
-        expect(second).toBe(first);
-        expect(requests).toBe(1);
+        expect(second).not.toBe(first);
+        expect(second.statusCode).toBe(404);
+        expect(requests).toBe(2);
         expect(minifications).toBe(0);
+    });
+
+    it("Serves the recovered upstream response after a transient upstream error", async () => {
+        const statuses = [502, 200, 200];
+        let requests = 0;
+        const { readProxy } = loadReader({ proxy: { "/api": "http://upstream.test" } }, {
+            requestBuffer: async () => {
+                const statusCode = statuses[requests++];
+                return proxyResponse(statusCode === 200 ? "ok" : "bad gateway", "text/plain", statusCode);
+            },
+        });
+
+        const failed = await readProxy("/api/data", "");
+        const recovered = await readProxy("/api/data", "");
+        const cached = await readProxy("/api/data", "");
+
+        expect(failed.statusCode).toBe(502);
+        expect(recovered.statusCode).toBe(200);
+        expect(recovered.data.toString()).toBe("ok");
+        expect(cached).toBe(recovered);
+        expect(requests).toBe(2);
     });
 
     it("Replaces proxied conversion parameters with the converted MIME type", async () => {
@@ -552,5 +575,52 @@ describe("contentReader edge cases", () => {
         expect(retried.body).toEqual(Buffer.from("compressed"));
         expect(cached.body).toBe(retried.body);
         expect(attempts).toBe(2);
+    });
+
+    it("Never serves a cached isomorphic fallback for a page deployed afterwards", async () => {
+        writeFixture("index.html", "<p>spa index</p>");
+        const { readFile } = loadReader({ enableIsomorphic: true });
+
+        const fallback = await readFile("index.html", "/deployed-later", "text/html", "");
+        writeFixture("deployed-later", "<p>real page</p>");
+        const real = await readFile("/deployed-later", "/deployed-later", "text/html", "");
+        const fallbackAgain = await readFile("index.html", "/deployed-later", "text/html", "");
+
+        expect(fallback.data).toBe("<p>spa index</p>");
+        expect(real.data).toBe("<p>real page</p>");
+        expect(fallbackAgain).toBe(fallback);
+    });
+
+    it("Serves cached text uncompressed when the compression queue is saturated", async () => {
+        writeFixture("saturated.css", "body{color:red}");
+        let saturated = true;
+        const { readFile } = loadReader({}, {
+            compress: async data => {
+                if (saturated) {
+                    const error: any = new Error("Compression queue is full");
+                    error.statusCode = 503;
+                    throw error;
+                }
+                return Buffer.from(`br:${data}`);
+            },
+        });
+
+        const value = await readFile("saturated.css", "/saturated.css", "text/css", "br");
+        const degraded = await value.responseData("br");
+        saturated = false;
+        const recovered = await value.responseData("br");
+
+        expect(degraded).toEqual({ encoding: false, body: "body{color:red}" });
+        expect(recovered).toEqual({ encoding: "br", body: Buffer.from("br:body{color:red}") });
+    });
+
+    it("Still fails a response when compression breaks for another reason", async () => {
+        writeFixture("broken-compression.css", "body{color:blue}");
+        const { readFile } = loadReader({}, {
+            compress: async () => { throw new Error("Compression worker crashed"); },
+        });
+
+        await expectAsync(readFile("broken-compression.css", "/broken-compression.css", "text/css", "gzip"))
+            .toBeRejectedWithError("Compression worker crashed");
     });
 });

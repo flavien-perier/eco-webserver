@@ -64,7 +64,7 @@ describe("minifySvg", () => {
         expect(await minifySvg(inputSvg, fileHash)).not.toContain("Test comment");
 
         // Modify cache file and read it
-        fs.writeFileSync(`${TEST_CACHE}/${fileHash}-v2.svg`, "test");
+        fs.writeFileSync(`${TEST_CACHE}/${fileHash}-v3.svg`, "test");
         expect(await minifySvg(inputSvg, fileHash)).toEqual("test");
     });
 });

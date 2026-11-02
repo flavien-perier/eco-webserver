@@ -73,7 +73,7 @@ describe("minifyJson", () => {
         expect(await minifyJson(inputJson, fileHash)).toEqual(expectedJson);
 
         // Modify cache file and read it
-        fs.writeFileSync(`${TEST_CACHE}/${fileHash}-v2.json`, "test");
+        fs.writeFileSync(`${TEST_CACHE}/${fileHash}-v3.json`, "test");
         expect(await minifyJson(inputJson, fileHash)).toEqual("test");
     });
 });

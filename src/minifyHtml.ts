@@ -1,19 +1,16 @@
 "use strict";
 
-const { createHash } = require("crypto");
 const { minify } = require("html-minifier-terser");
-const minifyCss = require("./minifyCss.ts");
-const minifyJs = require("./minifyJs.ts");
 const { writeProcessingCache, readProcessingCache } = require("./processingCache.ts");
 const { runCpuTask } = require("./cpuPool.ts");
 const { HTML_MINIFY_OPTIONS } = require("./minifierOptions.ts");
 const Logger = require("./Logger.ts");
 
 const logger = new Logger();
-const contentHash = (content: string): string => createHash("sha256").update(content).digest("hex");
 
 /**
- * Reforms a HTML page with an HTML parser.
+ * Reforms a HTML page with an HTML parser. A failed minification serves the
+ * original page without persisting it, so a transient failure is retried.
  */
 module.exports = async function minifyHtml(inputHtml: string, hash: string): Promise<string> {
     const cacheHtml = await readProcessingCache(hash, "html");
@@ -24,14 +21,11 @@ module.exports = async function minifyHtml(inputHtml: string, hash: string): Pro
 
     let outputHtml;
     try {
-        outputHtml = await runCpuTask("html", inputHtml, () => minify(inputHtml, {
-            ...HTML_MINIFY_OPTIONS,
-            minifyCSS: code => minifyCss(code, contentHash(code)),
-            minifyJS: code => minifyJs(code, contentHash(code)),
-        }));
+        outputHtml = await runCpuTask("html", inputHtml, () => minify(inputHtml, HTML_MINIFY_OPTIONS));
     } catch(err) {
+        if (err.statusCode === 503) throw err;
         logger.error("Html minification error", err);
-        outputHtml = inputHtml;
+        return inputHtml;
     }
 
     await writeProcessingCache(outputHtml, hash, "html");

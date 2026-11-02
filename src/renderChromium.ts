@@ -9,6 +9,8 @@ const puppeteer = require("puppeteer-core");
 const configuration = require("./configuration.ts").default;
 const getContentType = require("./getContentType.ts");
 const { readLocalResource } = require("./rawResourceCache.ts");
+const { findProxyPrefix, buildProxyUrl } = require("./proxyUrl.ts");
+const requestBuffer = require("./httpRequest.ts");
 const Logger = require("./Logger.ts");
 
 const logger = new Logger();
@@ -18,6 +20,8 @@ const CHROMIUM_CONCURRENCY = Math.max(1, Number(process.env.ECO_CHROMIUM_CONCURR
 const CHROMIUM_MAX_QUEUE = Math.max(0, Number(configuration.chromiumMaxQueue ?? 100));
 const CHROMIUM_RENDER_TIMEOUT = Math.max(1, Number(configuration.chromiumRenderTimeout) || 30000);
 const CHROMIUM_WAIT_UNTIL = configuration.chromiumWaitUntil || "networkidle0";
+const PROXY_TIMEOUT = Math.max(1, Number(configuration.proxyTimeout) || 10000);
+const PROXY_MAX_SIZE = Math.max(1, Number(configuration.proxyMaxSize) || 50 * 1024 * 1024);
 const CHROMIUM_ARGS = [
     "--no-sandbox",
     "--disable-setuid-sandbox",
@@ -120,6 +124,24 @@ async function runBeforeDeadline(operation: Function, deadline: number): Promise
 }
 
 /**
+ * Answers a pre-rendering request for a proxied route with the upstream
+ * response, as the server would for a browser. Only GET is forwarded.
+ */
+async function respondFromProxy(request: any, requestUrl: string): Promise<void> {
+    if (request.method() !== "GET") {
+        await request.respond({ status: 405, contentType: "text/plain", body: "Method Not Allowed" });
+        return;
+    }
+
+    const response = await requestBuffer(buildProxyUrl(requestUrl), PROXY_TIMEOUT, PROXY_MAX_SIZE);
+    await request.respond({
+        status: response.statusCode,
+        contentType: response.headers["content-type"] || getContentType(requestUrl),
+        body: response.buffer
+    });
+}
+
+/**
  * Renders a html page with chromium before sending it to the client.
  * Returns `null` if chromium is not usable, in this case the caller must fallback on jsdom.
  */
@@ -158,6 +180,11 @@ module.exports = async function renderChromium(content: string, requestUrl: stri
 
                 if (requestedUrl.hostname !== "127.0.0.1") {
                     await request.continue();
+                    return;
+                }
+
+                if (findProxyPrefix(requestedUrl.pathname) !== undefined) {
+                    await respondFromProxy(request, `${requestedUrl.pathname}${requestedUrl.search}`);
                     return;
                 }
 

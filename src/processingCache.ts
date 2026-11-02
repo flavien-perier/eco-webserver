@@ -7,7 +7,9 @@ const { join } = require("path");
 const configuration = require("./configuration.ts").default;
 
 // Bump whenever a transformation or compression setting changes.
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
+// Artefacts written by any version, including the unversioned `<sha256>.<format>` naming.
+const PROCESSING_ARTEFACT = /^[0-9a-f]{64}(-v\d+)?\.(html|css|js|json|svg|xml|webp|woff2|ssr|gzip|br)$/;
 const DISK_CACHE_MAX_SIZE = Math.max(1, Number(process.env.ECO_DISK_CACHE_MAX_SIZE || configuration.diskCacheMaxSize) || 512 * 1024 * 1024);
 const CLEANUP_INTERVAL = Math.max(0, Number(configuration.diskCacheCleanupInterval ?? 60 * 60 * 1000));
 const configuredWriteMaxQueue = Number(configuration.diskWriteMaxQueue);
@@ -33,6 +35,10 @@ async function cleanProcessingCache(maxSize: number = DISK_CACHE_MAX_SIZE): Prom
         if (err.code === "ENOENT") return;
         throw err;
     }
+
+    await Promise.all(files
+        .filter(file => PROCESSING_ARTEFACT.test(file) && !file.includes(`-${CACHE_VERSION}.`))
+        .map(file => unlink(join(configuration.cacheDir, file)).catch(() => {})));
 
     const filesToStat = files.filter(file => file.includes(`-${CACHE_VERSION}.`) && !file.endsWith(".tmp"));
     const entries = [];

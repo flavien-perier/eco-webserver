@@ -26,7 +26,7 @@ module.exports = async function minifySvg(inputSvg: string, hash: string): Promi
     } catch(err) {
         if (err.statusCode === 503) throw err;
         logger.error("Svg badly formatted", err);
-        outputSvg = inputSvg;
+        return inputSvg;
     }
 
     await writeProcessingCache(outputSvg, hash, "svg");
