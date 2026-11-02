@@ -19,9 +19,10 @@
   },
   "main": "lib/cli.js",
   "bin": {
-    "eco-webserver": "./lib/cli.js"
+    "eco-webserver": "bin/eco-webserver.js"
   },
   "files": [
+    "bin",
     "lib"
   ],
   "scripts": {

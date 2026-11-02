@@ -5,7 +5,7 @@
 - `npm test` — full Jasmine suite (`jasmine --config=jasmine.json`, specs are `tests/**/*.spec.ts`). CI (`.github/workflows/test.yml`) runs `npm install && npm test` on Node 24.
 - Run one spec file: `npm test -- tests/server.spec.ts` (positional paths resolve from the repo root, not from `spec_dir`).
 - Run the server: `node cli.ts`. No build step for development, tests or Docker — Node 24 strips TypeScript types from `.ts` CommonJS sources at load time (amaro).
-- The npm package is the exception: Node refuses type stripping under `node_modules` (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`), so `npm run build` (run by `prepack`) emits type-stripped JavaScript into the gitignored `lib/` with `.ts` specifiers rewritten to `.js`; `main`/`bin` point to `lib/cli.js`. `tests/packageBuild.spec.ts` runs that build from under `node_modules`.
+- The npm package is the exception: Node refuses type stripping under `node_modules` (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`), so `npm run build` (run by `prepack`) emits type-stripped JavaScript into the gitignored `lib/` with `.ts` specifiers rewritten to `.js`; `main` points to `lib/cli.js`; `bin` points to the committed shim `bin/eco-webserver.js` (npm validates `bin` before `prepack` runs and silently drops a missing target). `tests/packageBuild.spec.ts` runs that build from under `node_modules`.
 - No lint, formatter, or typecheck tooling exists. Match existing style: 4-space indent, `require`/`module.exports`, native TS types on signatures and class fields. Keep JSDoc for behavior descriptions only, without redundant `@param`, `@returns` or `@type` tags.
 - `.ts` requires need explicit extensions (`require("./server.ts")`): extensionless resolution does not find `.ts` files, neither in sources nor in proxyquire stub keys (`"./configuration.ts"`) nor in `new Worker(<worker.ts path>)`.
 - Type stripping is not a transform: `enum`, `namespace`, `import x = require(...)` and parameter properties throw at load time in `.ts` — use union string types and plain object constants instead.
@@ -18,7 +18,7 @@
 - `wawoff2` (font → woff2) is wasm-based, no native toolchain needed. It returns `Uint8Array`, wrapped in `Buffer` in `src/convertFont.ts`.
 - `puppeteer-core` downloads no browser: it launches the system chromium at `chromiumPath` (env `ECO_CHROMIUM_PATH`, autodetected among common `/usr/bin` paths).
 - `jsdom` 30 removed the `ResourceLoader` export — `evaluateHtmlFile` in `src/contentReader.ts` loads and executes `<script>` sources manually in the jsdom VM context (no `resources` option).
-- `package-lock.json` is deliberately gitignored.
+- `package-lock.json` is tracked and copied into the Docker build context.
 
 ## Architecture
 
@@ -43,6 +43,6 @@
 ## Release
 
 - Default branch: `master`.
-- A GitHub **release** triggers `.github/workflows/npm-publish.yml` (`npm publish`). Bump the version in `package.json` and keep the Dockerfile label `org.opencontainers.image.version` in sync in the same commit.
+- A GitHub **release** triggers `.github/workflows/npm-publish.yml` (`npm publish`, OIDC trusted publishing via `id-token: write`, `NPM_TOKEN` as fallback). Bump the version in `package.json` and keep the Dockerfile label `org.opencontainers.image.version` in sync in the same commit.
 - Pushing an `x.y.z` **tag** triggers `.github/workflows/docker-tag.yml`, which runs the full test suite before the multi-arch build (amd64/arm64 → `flavienperier/eco-webserver:x.y.z` on Docker Hub).
 - Pushes and pull requests targeting `master` trigger `.github/workflows/docker-commit.yml`, which runs the full test suite before publishing `flavienperier/eco-webserver:commit-<sha>` and refreshing `latest` with the same multi-arch build.

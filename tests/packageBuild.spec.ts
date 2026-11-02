@@ -55,7 +55,10 @@ async function waitForServer(port: number, child: any, output: () => string): Pr
 describe("published package", () => {
     // Installed packages live under node_modules, where Node refuses to strip
     // TypeScript types: the build must ship plain JavaScript there.
-    const installDir = join(ROOT, "node_modules", ".cache", `eco-webserver-package-${process.pid}`);
+    const packageDir = join(ROOT, "node_modules", ".cache", `eco-webserver-package-${process.pid}`);
+    const installDir = join(packageDir, "lib");
+    const packageJson = JSON.parse(fs.readFileSync(join(ROOT, "package.json"), "utf8"));
+    const binTarget = packageJson.bin["eco-webserver"];
     let workDir: string;
     let child: any;
 
@@ -65,6 +68,11 @@ describe("published package", () => {
             encoding: "utf8",
         });
         expect(build.status).withContext(build.stderr).toBe(0);
+        // Lay out the package as npm installs it: its `files` plus package.json.
+        for (const entry of packageJson.files.filter(entry => entry !== "lib")) {
+            fs.cpSync(join(ROOT, entry), join(packageDir, entry), { recursive: true });
+        }
+        fs.copyFileSync(join(ROOT, "package.json"), join(packageDir, "package.json"));
     });
 
     beforeEach(() => {
@@ -77,7 +85,16 @@ describe("published package", () => {
     });
 
     afterAll(() => {
-        fs.rmSync(installDir, { recursive: true, force: true });
+        fs.rmSync(packageDir, { recursive: true, force: true });
+    });
+
+    it("points bin to a committed file, since npm validates it before prepack builds lib", () => {
+        const tracked = spawnSync("git", ["ls-files", "--error-unmatch", binTarget], { cwd: ROOT });
+
+        expect(binTarget.startsWith("lib/") || binTarget.startsWith("./lib/")).toBeFalse();
+        expect(tracked.status).withContext(`${binTarget} is not tracked by git`).toBe(0);
+        expect(packageJson.files).toContain(binTarget.replace(/^\.\//, "").split("/")[0]);
+        expect(fs.readFileSync(join(ROOT, binTarget), "utf8")).toMatch(/^#!\/usr\/bin\/env node\n/);
     });
 
     it("ships no TypeScript source", () => {
@@ -91,7 +108,7 @@ describe("published package", () => {
     it("serves, minifies in workers and compresses when installed under node_modules", async () => {
         const port = await freePort();
         let output = "";
-        child = spawn(process.execPath, [join(installDir, "cli.js")], {
+        child = spawn(process.execPath, [join(packageDir, binTarget)], {
             cwd: workDir,
             env: {
                 ...process.env,

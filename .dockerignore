@@ -6,8 +6,8 @@
 Dockerfile
 jasmine.json
 node_modules
-package-lock.json
 README.md
 tests
 lib
 scripts
+bin
